@@ -23,6 +23,7 @@ on:
 
 jobs:
   build:
+    if: ${{ github.event.inputs.tipo != 'release-smoke' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -107,16 +108,37 @@ jobs:
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
 
-      # --- Prueba de humo del flujo de tienda: llave temporal que se descarta. El AAB resultante NO sirve para Google Play.
+  # Prueba de humo del flujo de tienda con una llave temporal que se descarta (el AAB resultante NO sirve para Google Play).
+  # Corre en cada cambio para detectar a tiempo si algo deja de compilar en modo release.
+  store-pipeline-check:
+    if: ${{ github.event_name == 'push' || github.event.inputs.tipo == 'release-smoke' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - name: Asegurar plataforma Android 36
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null || true
+      - name: Preparar la web y sincronizar con Android
+        run: |
+          echo "VERSION_NAME=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+          npm run sync
       - name: Llave temporal (solo prueba de humo)
-        if: ${{ github.event.inputs.tipo == 'release-smoke' }}
         run: |
           keytool -genkeypair -keystore "$RUNNER_TEMP/smoke.jks" -alias smoke -keyalg RSA -keysize 2048 -validity 2 \
             -storepass smokepass -keypass smokepass -dname "CN=smoke"
           echo "KEYSTORE_FILE=$RUNNER_TEMP/smoke.jks" >> "$GITHUB_ENV"
-
       - name: AAB de prueba de humo
-        if: ${{ github.event.inputs.tipo == 'release-smoke' }}
         working-directory: android
         env:
           KEYSTORE_PASSWORD: smokepass
