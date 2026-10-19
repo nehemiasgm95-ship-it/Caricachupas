@@ -47,39 +47,49 @@
     </form>
 
     <div class="field">
-      <span class="flabel">Dificultad</span>
-      <div class="seg" id="seg-difficulty" role="radiogroup" aria-label="Dificultad">
-        <button type="button" data-value="facil" role="radio">😀<small>Fácil</small></button>
-        <button type="button" data-value="medio" role="radio">🙂<small>Medio</small></button>
-        <button type="button" data-value="dificil" role="radio">😬<small>Difícil</small></button>
-        <button type="button" data-value="extremo" role="radio">🔥<small>Extremo</small></button>
+      <div class="seg two" id="seg-auto" role="radiogroup" aria-label="Modo de juego">
+        <button type="button" data-value="auto" role="radio">🎲<small>Automático</small></button>
+        <button type="button" data-value="manual" role="radio">🎛️<small>Manual</small></button>
       </div>
+      <p id="auto-note" class="auto-note">🎰 La ruleta elige la dificultad y quién empieza</p>
     </div>
 
+    <div id="manual-settings" class="manual-settings">
     <div class="field">
-      <span class="flabel">Vueltas por tema</span>
-      <div class="seg" id="seg-laps" role="radiogroup" aria-label="Vueltas por tema">
-        <button type="button" data-value="0" role="radio">♾️<small>Hasta fallar</small></button>
-        <button type="button" data-value="1" role="radio">1</button>
-        <button type="button" data-value="2" role="radio">2</button>
-        <button type="button" data-value="3" role="radio">3</button>
-        <button type="button" data-value="5" role="radio">5</button>
+        <span class="flabel">Dificultad</span>
+        <div class="seg" id="seg-difficulty" role="radiogroup" aria-label="Dificultad">
+          <button type="button" data-value="facil" role="radio">😀<small>Fácil</small></button>
+          <button type="button" data-value="medio" role="radio">🙂<small>Medio</small></button>
+          <button type="button" data-value="dificil" role="radio">😬<small>Difícil</small></button>
+          <button type="button" data-value="extremo" role="radio">🔥<small>Extremo</small></button>
+        </div>
       </div>
-    </div>
 
-    <div class="field">
-      <span class="flabel">Al fallar</span>
-      <div class="seg" id="seg-mode" role="radiogroup" aria-label="Al fallar">
-        <button type="button" data-value="eliminar" role="radio">☠️<small>Sale</small></button>
-        <button type="button" data-value="castigo" role="radio">😈<small>Castigo</small></button>
+      <div class="field">
+        <span class="flabel">Vueltas por tema</span>
+        <div class="seg" id="seg-laps" role="radiogroup" aria-label="Vueltas por tema">
+          <button type="button" data-value="0" role="radio">♾️<small>Hasta fallar</small></button>
+          <button type="button" data-value="1" role="radio">1</button>
+          <button type="button" data-value="2" role="radio">2</button>
+          <button type="button" data-value="3" role="radio">3</button>
+          <button type="button" data-value="5" role="radio">5</button>
+        </div>
       </div>
-    </div>
 
-    <label class="field time">
-      <span class="flabel">⏱️ Tiempo</span>
-      <input id="seconds" type="range" min="3" max="10" value="5" aria-label="Segundos por turno">
-      <b id="seconds-label">5 s</b>
-    </label>
+      <div class="field">
+        <span class="flabel">Al fallar</span>
+        <div class="seg" id="seg-mode" role="radiogroup" aria-label="Al fallar">
+          <button type="button" data-value="eliminar" role="radio">☠️<small>Sale</small></button>
+          <button type="button" data-value="castigo" role="radio">😈<small>Castigo</small></button>
+        </div>
+      </div>
+
+      <label class="field time">
+        <span class="flabel">⏱️ Tiempo</span>
+        <input id="seconds" type="range" min="3" max="10" value="5" aria-label="Segundos por turno">
+        <b id="seconds-label">5 s</b>
+      </label>
+    </div>
 
     <details class="more">
       <summary>⚙️ Más ajustes</summary>
@@ -109,7 +119,18 @@
         afiliado a ellos y solo usa texto.</p>
     </details>
 
-    <button id="btn-play" class="btn big sticky" disabled>▶ ¡Jugar!</button>
+    <button id="btn-play" class="btn big sticky" disabled>🎰 ¡Girar ruleta!</button>
+  </section>
+
+  <!-- Ruleta -->
+  <section id="screen-wheel" class="screen center">
+    <h1 id="wheel-title" class="wheel-title"></h1>
+    <div class="wheel-wrap">
+      <div class="pointer" aria-hidden="true"></div>
+      <svg id="wheel" viewBox="-100 -100 200 200" role="img" aria-label="Ruleta"></svg>
+    </div>
+    <p id="wheel-result" class="wheel-result" aria-live="polite">&nbsp;</p>
+    <button id="btn-spin" class="btn big">🎰 ¡Girar!</button>
   </section>
 
   <!-- Anuncio del tema -->
@@ -119,8 +140,7 @@
     <h1 id="topic-name" class="topic-name"></h1>
     <div class="letter" id="topic-letter" aria-label="Letra"></div>
     <div class="who"><span id="topic-avatar" class="avatar"></span><b id="topic-player"></b></div>
-    <button id="btn-start-round" class="btn big">▶ ¡Empezar!</button>
-    <button id="btn-quit-topic" class="btn link">Salir</button>
+    <p class="go" aria-hidden="true">⏱️ ¡Ya!</p>
   </section>
 
   <!-- Turno -->
@@ -179,6 +199,7 @@
 <script src="data.js"></script>
 <script src="logic.js"></script>
 <script src="sfx.js"></script>
+<script src="wheel.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -152,3 +152,16 @@ input[type=text]:focus, select:focus { outline: none; border-color: var(--accent
   .pulse, .shake, .pop, .ring.danger .clock { animation: none; }
   .confetti { display: none; }
 }
+
+/* ---------- Modo y ruleta ---------- */
+.seg.two button { min-height: 64px; }
+.auto-note { color: var(--muted); margin: 8px 0 0; text-align: center; font-size: .95rem; }
+.manual-settings { display: flex; flex-direction: column; gap: 14px; }
+.wheel-title { font-size: 2rem; text-wrap: balance; }
+.wheel-wrap { position: relative; width: min(82vw, 340px); aspect-ratio: 1; }
+.wheel-wrap svg { width: 100%; height: 100%; filter: drop-shadow(0 10px 20px rgba(0,0,0,.45)); }
+.pointer { position: absolute; top: -10px; left: 50%; width: 0; height: 0; transform: translateX(-50%); z-index: 2;
+  border-left: 16px solid transparent; border-right: 16px solid transparent; border-top: 30px solid var(--accent);
+  filter: drop-shadow(0 3px 2px rgba(0,0,0,.5)); }
+.wheel-result { font-size: 1.7rem; font-weight: 800; min-height: 2.2rem; margin: 0; color: var(--accent); text-wrap: balance; }
+.go { font-size: 1.6rem; font-weight: 900; color: var(--accent); margin: 0; animation: pulse 0.7s ease-in-out infinite; }

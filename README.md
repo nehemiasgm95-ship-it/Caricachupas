@@ -3,6 +3,12 @@
 Juego de categorías ("animales con la letra A") con cronómetro, micrófono y juez automático.
 Es una PWA sin dependencias: HTML + JS puro.
 
+## Inicio de partida
+- **🎲 Automático** (por defecto): pones los nombres y una **ruleta** elige la dificultad; otra ruleta elige quién
+  empieza. El orden de turnos se mezcla y quien abre cada tema nuevo también es aleatorio.
+- **🎛️ Manual**: eliges dificultad, vueltas, tiempo y qué pasa al fallar; solo gira la ruleta de quién empieza.
+- El tema se anuncia y el reloj corre enseguida, sin pausa para pensar.
+
 ## Experiencia
 - Al abrir la app pide el micrófono antes de nada. Si ya estaba permitido, entra directo; si está bloqueado,
   muestra cómo activarlo y deja reintentar o jugar sin voz (con botones ✔ / ✘).
@@ -54,6 +60,7 @@ Recomendado: **Chrome en Android**. En iPhone (Safari) el reconocimiento de voz 
 - `logic.js`: normalización y juez automático (sin DOM, probable con Node).
 - `data.js`: temas, listas de palabras, niveles de dificultad y castigos. Aquí se agregan categorías.
 - `app.js`: pantallas, cronómetro, micrófono y flujo del juego.
+- `wheel.js`: ruleta SVG (dibujo, giro con desaceleración y sector ganador).
 - `sfx.js`: aplausos, lamento y pitidos generados con Web Audio.
 - `sw.js` / `manifest.json`: instalable y usable sin conexión.
 

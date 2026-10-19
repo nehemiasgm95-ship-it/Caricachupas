@@ -2,6 +2,7 @@
   const { LETTERS, CATEGORIES, DIFFICULTIES, PUNISHMENTS } = CCData;
   const { evaluate, buildIndex, rankedLetters, lettersForRange } = CCLogic;
   const Sfx = CCSfx;
+  const Wheel = CCWheel;
 
   const $ = (id) => document.getElementById(id);
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -10,15 +11,15 @@
   const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐯', '🐶', '🐱', '🐰', '🐨'];
   const RING_LEN = 2 * Math.PI * 52;
   const NEXT_TURN_MS = 1100;   // deja que termine el aplauso antes de abrir el micrófono
+  const REVEAL_MS = 1500;      // sin voz: tiempo que se ve el tema antes de arrancar el reloj
   const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- estado ----------
   const state = {
     players: [],            // { name, alive, avatar, hue }
-    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0 },
+    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true },
     micOk: false,           // false = se juega sin voz (botones ✔ / ✘)
     round: 0,
-    starter: 0,
     topic: null,            // { category, letter, index, used:Map(clave->palabra), turns }
     recentCats: [],
     current: 0,
@@ -238,6 +239,13 @@
     $('seconds-label').textContent = n + ' s';
   }
 
+  function applyMode() {
+    const auto = state.settings.auto;
+    $('manual-settings').hidden = auto;
+    $('auto-note').hidden = !auto;
+    $('btn-play').textContent = auto ? '🎰 ¡Girar ruleta!' : '▶ ¡Jugar!';
+  }
+
   function initSetup() {
     load();
     setSeconds(state.settings.seconds);
@@ -246,6 +254,11 @@
     $('sound').checked = state.settings.sound;
     Sfx.setEnabled(state.settings.sound);
 
+    bindSeg('seg-auto', () => (state.settings.auto ? 'auto' : 'manual'), (v) => {
+      state.settings.auto = v === 'auto';
+      applyMode(); save();
+    });
+    applyMode();
     bindSeg('seg-difficulty', () => state.settings.difficulty, (v) => {
       state.settings.difficulty = v;
       setSeconds(DIFFICULTIES[v].seconds); // cada nivel sugiere un tiempo; se puede ajustar a mano
@@ -267,7 +280,7 @@
     $('lang').onchange = (e) => { state.settings.lang = e.target.value; save(); };
     $('voice').onchange = (e) => { state.settings.voice = e.target.checked; save(); };
     $('sound').onchange = (e) => { state.settings.sound = e.target.checked; Sfx.setEnabled(e.target.checked); save(); };
-    $('btn-play').onclick = startGame;
+    $('btn-play').onclick = startFlow;
     $('rejected-clear').onclick = () => {
       try { localStorage.removeItem(REJECTED_KEY); } catch (_) {}
       renderRejected();
@@ -289,12 +302,72 @@
     return from;
   }
 
-  function startGame() {
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Muestra una ruleta, espera el giro y devuelve el índice ganador.
+  async function runWheel({ title, items, tap, result }) {
+    $('wheel-title').textContent = title;
+    const svg = $('wheel');
+    Wheel.build(svg, items);
+    $('wheel-result').innerHTML = '&nbsp;';
+    const btn = $('btn-spin');
+    btn.hidden = !tap;
+    btn.disabled = false;
+    show('wheel');
+    if (tap) await new Promise((res) => { btn.onclick = () => { btn.disabled = true; res(); }; });
+    else await wait(700);
+    Sfx.unlock();
+    btn.hidden = true;
+    const idx = await Wheel.spin(svg, items.length, { onTick: () => Sfx.click() });
+    $('wheel-result').textContent = result(idx);
+    Sfx.ding(); buzz(60);
+    confetti(24);
+    pop($('wheel-result'));
+    await wait(1400);
+    return idx;
+  }
+
+  // Inicio: [ruleta de dificultad] -> ruleta de quién empieza -> el tema arranca solo.
+  async function startFlow() {
     Sfx.unlock();
     state.players.forEach((p) => { p.alive = true; });
+    shuffle(state.players);               // el orden de turnos también es aleatorio
     state.round = 0;
-    state.starter = Math.floor(Math.random() * state.players.length);
-    newRound();
+
+    if (state.settings.auto) {
+      const keys = Object.keys(DIFFICULTIES);
+      const icons = { facil: '😀', medio: '🙂', dificil: '😬', extremo: '🔥' };
+      const items = keys.map((k) => ({ emoji: icons[k], label: DIFFICULTIES[k].label }));
+      const di = await runWheel({
+        title: '¿Qué dificultad?', items, tap: true,
+        result: (i) => `${icons[keys[i]]} ${DIFFICULTIES[keys[i]].label}`,
+      });
+      state.settings.difficulty = keys[di];
+      setSeconds(DIFFICULTIES[keys[di]].seconds);
+      save();
+    }
+
+    const si = await runWheel({
+      title: '¿Quién empieza?',
+      items: state.players.map((p) => ({ emoji: p.avatar, label: p.name })),
+      tap: false,
+      result: (i) => `${state.players[i].avatar} ${state.players[i].name} empieza`,
+    });
+    newRound(si);
+  }
+
+  // Quien abre cada tema nuevo es aleatorio (entre los que siguen en juego).
+  function randomStarter() {
+    const ids = alive().map((x) => x.i);
+    const pool = ids.length >= 3 ? ids.filter((i) => i !== state.current) : ids;
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   const indexCache = new Map();
@@ -318,10 +391,10 @@
 
   function topicLabel(t) { return `${t.category.name} con la letra ${t.letter}`; }
 
-  function newRound() {
+  function newRound(starterIdx) {
     state.round += 1;
     state.topic = pickTopic();
-    state.current = state.players[state.starter].alive ? state.starter : nextAlive(state.starter);
+    state.current = starterIdx == null ? randomStarter() : starterIdx;
     const t = state.topic;
     const diff = DIFFICULTIES[state.settings.difficulty] || DIFFICULTIES.medio;
     $('topic-round').textContent = `Tema ${state.round} · ${diff.label}`;
@@ -332,14 +405,18 @@
     $('topic-player').textContent = state.players[state.current].name;
     show('topic');
     pop($('topic-letter'));
+    beginRound();
   }
 
+  // El tema se anuncia y el reloj corre enseguida: nadie tiene tiempo extra para pensar.
   async function beginRound() {
     Sfx.unlock();
-    const btn = $('btn-start-round');
-    btn.disabled = true;
+    const shown = Date.now();
     await speak('Caricachupas. ' + topicLabel(state.topic));
-    btn.disabled = false;
+    // Con voz, el anuncio ya da el tiempo de verlo; sin voz se deja un momento para leerlo.
+    const spoke = state.settings.voice && 'speechSynthesis' in window;
+    const rest = (spoke ? 400 : REVEAL_MS) - (Date.now() - shown);
+    if (rest > 0) await wait(rest);
     beginTurn();
   }
 
@@ -533,7 +610,7 @@
 
     const last = eliminate && alive().length <= 1;
     $('btn-next-round').textContent = last ? 'Ver ganador 🏆' : 'Siguiente tema ▶';
-    $('btn-next-round').onclick = last ? showWinner : () => { state.starter = nextAlive(state.current); newRound(); };
+    $('btn-next-round').onclick = last ? showWinner : () => newRound();
     // Pausa corta para que se vea la cara de derrota y suene el lamento.
     setTimeout(() => { show('round-end'); pop($('end-emoji')); }, 900);
   }
@@ -550,7 +627,7 @@
     $('end-reason').textContent = `${laps} ${laps === 1 ? 'vuelta' : 'vueltas'} en ${state.topic.category.name}`;
     $('end-punishment').hidden = true;
     $('btn-next-round').textContent = 'Siguiente tema ▶';
-    $('btn-next-round').onclick = () => { state.starter = state.current; newRound(); };
+    $('btn-next-round').onclick = () => newRound();
     show('round-end');
     pop($('end-emoji'));
     confetti(50);
@@ -579,13 +656,11 @@
   // ---------- arranque ----------
   function init() {
     initSetup();
-    $('btn-start-round').onclick = beginRound;
     $('btn-ok').onclick = () => acceptAnswer('', '');
     $('btn-bad').onclick = () => failTurn('El grupo dijo que falló', '');
-    $('btn-quit-topic').onclick = quit;
     $('btn-quit-end').onclick = quit;
     $('btn-quit-winner').onclick = quit;
-    $('btn-again').onclick = startGame;
+    $('btn-again').onclick = startFlow;
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
