@@ -456,17 +456,30 @@
   };
 
   const PUNISHMENTS = [
-    'Toma un trago (o un vaso de agua)',
-    'Di un trabalenguas sin equivocarte',
-    'Imita a un animal hasta que el grupo se ría',
-    'Cuenta un secreto vergonzoso',
-    'Haz 10 sentadillas',
-    'Canta el coro de una canción que elija el grupo',
-    'Habla con acento de otro país por 2 rondas',
-    'Deja que el grupo te escriba algo en la frente',
-    'Baila 20 segundos sin música',
-    'Manda un audio diciendo "te quiero" a quien elija el grupo',
+    { emoji: '🍺', text: 'Toma un trago (o un vaso de agua)' },
+    { emoji: '👅', text: 'Di un trabalenguas sin equivocarte' },
+    { emoji: '🐒', text: 'Imita a un animal hasta que el grupo se ría' },
+    { emoji: '🤫', text: 'Cuenta un secreto vergonzoso' },
+    { emoji: '🏋️', text: 'Haz 10 sentadillas' },
+    { emoji: '🎤', text: 'Canta el coro de una canción que elija el grupo' },
+    { emoji: '🌎', text: 'Habla con acento de otro país por 2 rondas' },
+    { emoji: '✍️', text: 'Deja que el grupo te escriba algo en la frente' },
+    { emoji: '💃', text: 'Baila 20 segundos sin música' },
+    { emoji: '📱', text: 'Manda un audio diciendo "te quiero" a quien elija el grupo' },
+    { emoji: '🤡', text: 'Haz tu mejor cara de payaso por 10 segundos' },
+    { emoji: '🙈', text: 'Cuenta hasta 20 al revés sin equivocarte' },
   ];
 
-  root.CCData = { LETTERS, CATEGORIES, DIFFICULTIES, PUNISHMENTS };
+  // Retos sorpresa: reglas especiales para un tema. seconds = cambio de tiempo por turno;
+  // min / max = largo de la palabra (sin espacios); dir = -1 invierte el orden de turnos.
+  const RETOS = [
+    { id: 'relampago', emoji: '⚡', label: 'Relámpago', text: '2 segundos menos', seconds: -2 },
+    { id: 'tranquilo', emoji: '🐢', label: 'Tranquilo', text: '3 segundos más', seconds: 3 },
+    { id: 'reves', emoji: '🔄', label: 'Al revés', text: 'el turno gira al otro lado', dir: -1 },
+    { id: 'doble', emoji: '💎', label: 'Doble puntos', text: 'todo vale el doble', mult: 2 },
+    { id: 'larga', emoji: '📏', label: 'Palabras largas', text: '7 letras o más', min: 7 },
+    { id: 'corta', emoji: '✂️', label: 'Palabras cortas', text: 'máximo 5 letras', max: 5 },
+  ];
+
+  root.CCData = { LETTERS, CATEGORIES, DIFFICULTIES, PUNISHMENTS, RETOS };
 })(typeof self !== 'undefined' ? self : this);

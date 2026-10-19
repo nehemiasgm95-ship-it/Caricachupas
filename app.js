@@ -1,6 +1,6 @@
 (function () {
-  const { LETTERS, CATEGORIES, DIFFICULTIES, PUNISHMENTS } = CCData;
-  const { evaluate, buildIndex, rankedLetters, lettersForRange } = CCLogic;
+  const { LETTERS, CATEGORIES, DIFFICULTIES, PUNISHMENTS, RETOS } = CCData;
+  const { evaluate, buildIndex, rankedLetters, lettersForRange, meetsReto, retoFeasible, scoreFor } = CCLogic;
   const Sfx = CCSfx;
   const Wheel = CCWheel;
 
@@ -11,23 +11,34 @@
   const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐯', '🐶', '🐱', '🐰', '🐨'];
   const RING_LEN = 2 * Math.PI * 52;
   const NEXT_TURN_MS = 1100;   // deja que termine el aplauso antes de abrir el micrófono
+  const RETO_CHANCE = 0.4;     // probabilidad de reto sorpresa por tema (desde el 2.º)
+  const JOKER_SECONDS = 4;
   const REVEAL_MS = 1500;      // sin voz: tiempo que se ve el tema antes de arrancar el reloj
   const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- estado ----------
   const state = {
     players: [],            // { name, alive, avatar, hue }
-    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true },
+    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, customPunishments: [] },
     micOk: false,           // false = se juega sin voz (botones ✔ / ✘)
     round: 0,
     topic: null,            // { category, letter, index, used:Map(clave->palabra), turns }
     recentCats: [],
+    reto: null,             // reto sorpresa del tema actual
+    lastReto: null,
+    dir: 1,                 // 1 = orden normal, -1 = al revés
+    forceReto: null,        // solo para pruebas
     current: 0,
     turnOpen: false,
   };
 
+  function resetStats(p) {
+    p.alive = true; p.score = 0; p.correct = 0; p.fails = 0; p.streak = 0; p.best = 0; p.fastest = null;
+    p.jokers = { time: 1, pass: 1 };
+    return p;
+  }
   function decorate(name, i) {
-    return { name, alive: true, avatar: AVATARS[i % AVATARS.length], hue: (i * 47 + 250) % 360 };
+    return resetStats({ name, avatar: AVATARS[i % AVATARS.length], hue: (i * 47 + 250) % 360 });
   }
   function save() {
     try {
@@ -246,12 +257,32 @@
     $('btn-play').textContent = auto ? '🎰 ¡Girar ruleta!' : '▶ ¡Jugar!';
   }
 
+  function renderPunishments() {
+    const ul = $('pun-list');
+    ul.innerHTML = '';
+    state.settings.customPunishments.forEach((t, i) => {
+      const li = document.createElement('li');
+      const span = document.createElement('span');
+      span.textContent = '😈 ' + t;
+      const rm = document.createElement('button');
+      rm.type = 'button'; rm.textContent = '✕'; rm.setAttribute('aria-label', 'Quitar castigo');
+      rm.onclick = () => { state.settings.customPunishments.splice(i, 1); save(); renderPunishments(); };
+      li.append(span, rm);
+      ul.appendChild(li);
+    });
+  }
+  function allPunishments() {
+    return PUNISHMENTS.concat(state.settings.customPunishments.map((text) => ({ emoji: '😈', text })));
+  }
+
   function initSetup() {
     load();
     setSeconds(state.settings.seconds);
     $('lang').value = state.settings.lang;
     $('voice').checked = state.settings.voice;
     $('sound').checked = state.settings.sound;
+    $('retos').checked = state.settings.retos;
+    renderPunishments();
     Sfx.setEnabled(state.settings.sound);
 
     bindSeg('seg-auto', () => (state.settings.auto ? 'auto' : 'manual'), (v) => {
@@ -280,6 +311,15 @@
     $('lang').onchange = (e) => { state.settings.lang = e.target.value; save(); };
     $('voice').onchange = (e) => { state.settings.voice = e.target.checked; save(); };
     $('sound').onchange = (e) => { state.settings.sound = e.target.checked; Sfx.setEnabled(e.target.checked); save(); };
+    $('retos').onchange = (e) => { state.settings.retos = e.target.checked; save(); };
+    $('pun-form').onsubmit = (e) => {
+      e.preventDefault();
+      const text = $('pun-text').value.trim();
+      if (!text || state.settings.customPunishments.length >= 20) return;
+      state.settings.customPunishments.push(text);
+      $('pun-text').value = '';
+      save(); renderPunishments();
+    };
     $('btn-play').onclick = startFlow;
     $('rejected-clear').onclick = () => {
       try { localStorage.removeItem(REJECTED_KEY); } catch (_) {}
@@ -296,7 +336,7 @@
   function nextAlive(from) {
     const n = state.players.length;
     for (let k = 1; k <= n; k++) {
-      const i = (from + k) % n;
+      const i = (((from + k * state.dir) % n) + n) % n;
       if (state.players[i].alive) return i;
     }
     return from;
@@ -337,7 +377,8 @@
   // Inicio: [ruleta de dificultad] -> ruleta de quién empieza -> el tema arranca solo.
   async function startFlow() {
     Sfx.unlock();
-    state.players.forEach((p) => { p.alive = true; });
+    state.players.forEach(resetStats);
+    state.reto = null; state.lastReto = null; state.dir = 1;
     shuffle(state.players);               // el orden de turnos también es aleatorio
     state.round = 0;
 
@@ -391,9 +432,27 @@
 
   function topicLabel(t) { return `${t.category.name} con la letra ${t.letter}`; }
 
+  // Reto sorpresa: a veces un tema trae una regla especial.
+  function pickReto(topic) {
+    if (state.forceReto) {
+      const r = RETOS.find((x) => x.id === state.forceReto);
+      state.forceReto = null;
+      return r || null;
+    }
+    if (!state.settings.retos || state.round < 2 || Math.random() > RETO_CHANCE) return null;
+    const pool = RETOS.filter((r) => r.id !== state.lastReto && retoFeasible(r, topic.index, topic.letter));
+    return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+  }
+  function turnSeconds() {
+    return Math.max(2, state.settings.seconds + ((state.reto && state.reto.seconds) || 0));
+  }
+
   function newRound(starterIdx) {
     state.round += 1;
     state.topic = pickTopic();
+    state.reto = pickReto(state.topic);
+    state.lastReto = state.reto ? state.reto.id : null;
+    state.dir = state.reto && state.reto.dir ? state.reto.dir : 1;
     state.current = starterIdx == null ? randomStarter() : starterIdx;
     const t = state.topic;
     const diff = DIFFICULTIES[state.settings.difficulty] || DIFFICULTIES.medio;
@@ -403,8 +462,15 @@
     $('topic-letter').textContent = t.letter;
     setAvatar($('topic-avatar'), state.players[state.current]);
     $('topic-player').textContent = state.players[state.current].name;
+    const rt = $('topic-reto');
+    rt.hidden = !state.reto;
+    if (state.reto) {
+      $('topic-reto-name').textContent = `${state.reto.emoji} RETO: ${state.reto.label}`;
+      $('topic-reto-text').textContent = state.reto.text;
+    }
     show('topic');
     pop($('topic-letter'));
+    if (state.reto) { pop(rt); Sfx.ding(); }
     beginRound();
   }
 
@@ -412,10 +478,11 @@
   async function beginRound() {
     Sfx.unlock();
     const shown = Date.now();
-    await speak('Caricachupas. ' + topicLabel(state.topic));
+    const r = state.reto;
+    await speak('Caricachupas. ' + topicLabel(state.topic) + (r ? `. Reto: ${r.label}. ${r.text}.` : ''));
     // Con voz, el anuncio ya da el tiempo de verlo; sin voz se deja un momento para leerlo.
     const spoke = state.settings.voice && 'speechSynthesis' in window;
-    const rest = (spoke ? 400 : REVEAL_MS) - (Date.now() - shown);
+    const rest = (spoke ? 400 : REVEAL_MS + (r ? 900 : 0)) - (Date.now() - shown);
     if (rest > 0) await wait(rest);
     beginTurn();
   }
@@ -425,7 +492,7 @@
   let listener = null;
 
   function setClock(ms) {
-    const total = state.settings.seconds * 1000;
+    const total = turnSeconds() * 1000;
     const frac = Math.max(0, Math.min(1, ms / total));
     const sec = Math.max(0, Math.ceil(ms / 1000));
     $('turn-clock').textContent = sec;
@@ -466,6 +533,48 @@
     });
   }
 
+  function renderTurnStats(player) {
+    $('turn-score').textContent = '⭐ ' + player.score;
+    const st = $('turn-streak');
+    st.hidden = player.streak < 2;
+    st.textContent = `🔥 x${player.streak}`;
+    const rc = $('turn-reto');
+    rc.hidden = !state.reto;
+    if (state.reto) rc.textContent = `${state.reto.emoji} ${state.reto.label}`;
+    $('btn-joker-time').disabled = !player.jokers.time;
+    $('btn-joker-pass').disabled = !player.jokers.pass;
+  }
+
+  function useTimeJoker() {
+    const pl = state.players[state.current];
+    if (!state.turnOpen || !pl.jokers.time) return;
+    pl.jokers.time -= 1;
+    deadline += JOKER_SECONDS * 1000;
+    setClock(deadline - performance.now());   // se ve al instante
+    Sfx.joker(); buzz(30);
+    toast(`⏱️ +${JOKER_SECONDS} s`);
+    renderTurnStats(pl);
+  }
+  function usePassJoker() {
+    const pl = state.players[state.current];
+    if (!state.turnOpen || !pl.jokers.pass) return;
+    pl.jokers.pass -= 1;
+    state.turnOpen = false;
+    stopTimer(); stopListening();
+    Sfx.joker();
+    state.topic.turns += 1;
+    setHeard('⏭️ Pasó', '');
+    renderTurnStats(pl);
+    state.current = nextAlive(state.current);
+    setTimeout(afterTurn, 800);
+  }
+  // Tras un acierto o un pase: ¿terminó el tema por vueltas o sigue el siguiente jugador?
+  function afterTurn() {
+    const laps = state.settings.laps;
+    if (laps && state.topic.turns >= laps * alive().length) topicCleared();
+    else beginTurn();
+  }
+
   function beginTurn() {
     const player = state.players[state.current];
     const t = state.topic;
@@ -485,9 +594,11 @@
     }
     setHeard(state.micOk ? '🎙️ …' : '', '');
     renderUsed();
+    renderTurnStats(player);
     show('turn');
     pop($('turn-avatar'));
-    runTimer(state.settings.seconds * 1000);
+    state.turnStart = performance.now();
+    runTimer(turnSeconds() * 1000);
     startListening();
   }
 
@@ -534,12 +645,17 @@
   function stopListening() { if (listener) { listener.stop(); listener = null; } }
 
   function check(text) {
-    return evaluate({
+    const r = evaluate({
       text,
       letter: state.topic.letter,
       index: state.topic.index,
       used: state.topic.used,
     });
+    if (r.status === 'valid' && !meetsReto(r.answer, state.reto)) {
+      return { ...r, status: 'invalid', code: 'reto', key: '',
+        reason: `Reto "${state.reto.label}": ${state.reto.text}. “${r.answer}” no cumple` };
+    }
+    return r;
   }
 
   // Resultado final del reconocedor. El juez es la app: prueba todas las
@@ -562,17 +678,27 @@
     state.topic.used.set(key || ('manual-' + state.topic.used.size), answer || 'respuesta');
     state.topic.turns += 1;
 
+    // Puntos: base + rapidez + racha, por el multiplicador del reto.
+    const pl = state.players[state.current];
+    const total = turnSeconds() * 1000;
+    const left = Math.max(0, deadline - performance.now());
+    pl.streak += 1;
+    pl.best = Math.max(pl.best, pl.streak);
+    pl.correct += 1;
+    const elapsed = performance.now() - state.turnStart;
+    if (pl.fastest == null || elapsed < pl.fastest) pl.fastest = elapsed;
+    const pts = scoreFor({ fracLeft: left / total, streak: pl.streak, mult: state.reto && state.reto.mult });
+    pl.score += pts;
+
     // ¡Aplausos!
     Sfx.clap(); buzz(40);
     confetti(26);
-    setHeard('👏 ' + (answer || '¡Correcto!'), 'ok');
+    setHeard(`👏 ${answer || '¡Correcto!'}  +${pts}`, 'ok');
     pop($('turn-heard'));
     renderUsed();
+    renderTurnStats(pl);
     state.current = nextAlive(state.current);
-
-    const laps = state.settings.laps;
-    const cleared = laps && state.topic.turns >= laps * alive().length;
-    setTimeout(cleared ? topicCleared : beginTurn, NEXT_TURN_MS);
+    setTimeout(afterTurn, NEXT_TURN_MS);
   }
 
   function failTurn(reason, heard) {
@@ -581,10 +707,37 @@
     stopTimer(); stopListening();
     Sfx.sad(); buzz([200, 80, 200]);
     shake();
+    const failer = state.players[state.current];
+    failer.fails += 1;
+    failer.streak = 0;
     setHeard(heard ? '😢 ' + heard : '⏰', 'no');
     endRound(reason, heard);
   }
   function timeUp() { failTurn('¡Se acabó el tiempo!', ''); }
+
+  // ---------- marcador ----------
+  function renderScores(ol, { skipOut = false } = {}) {
+    ol.innerHTML = '';
+    const rows = state.players.map((p, i) => ({ p, i })).sort((a, b) => b.p.score - a.p.score);
+    rows.forEach(({ p }, rank) => {
+      const li = document.createElement('li');
+      if (!p.alive) li.className = 'out';
+      const rk = document.createElement('span');
+      rk.className = 'rank';
+      rk.textContent = rank === 0 && p.score > 0 ? '🥇' : String(rank + 1);
+      const av = document.createElement('span');
+      av.className = 'avatar';
+      setAvatar(av, p);
+      const nm = document.createElement('span');
+      nm.className = 'nm';
+      nm.textContent = p.name + (p.alive ? '' : ' ☠️');
+      const pts = document.createElement('span');
+      pts.className = 'pts';
+      pts.textContent = p.score + ' pts';
+      li.append(rk, av, nm, pts);
+      ol.appendChild(li);
+    });
+  }
 
   // ---------- fin de ronda ----------
   function endRound(reason, heard) {
@@ -601,16 +754,33 @@
     said.textContent = heard ? `Dijo: “${heard}”` : '';
     $('end-reason').textContent = reason;
     const pun = $('end-punishment');
-    if (!eliminate) {
-      pun.textContent = '😈 ' + PUNISHMENTS[Math.floor(Math.random() * PUNISHMENTS.length)];
-      pun.hidden = false;
-    } else {
-      pun.hidden = true;
-    }
+    pun.hidden = true;
+    renderScores($('end-scores'));
 
-    const last = eliminate && alive().length <= 1;
-    $('btn-next-round').textContent = last ? 'Ver ganador 🏆' : 'Siguiente tema ▶';
-    $('btn-next-round').onclick = last ? showWinner : () => newRound();
+    const btn = $('btn-next-round');
+    if (eliminate) {
+      const last = alive().length <= 1;
+      btn.textContent = last ? 'Ver ganador 🏆' : 'Siguiente tema ▶';
+      btn.onclick = last ? showResults : () => newRound();
+    } else {
+      // Castigo: una ruleta decide cuál toca.
+      btn.textContent = '🎰 Girar castigo';
+      btn.onclick = async () => {
+        const pool = shuffle(allPunishments().slice()).slice(0, 8);
+        const idx = await runWheel({
+          title: `😈 Castigo para ${player.name}`,
+          items: pool.map((x) => ({ emoji: x.emoji })),
+          tap: false,
+          result: (i) => `${pool[i].emoji} ${pool[i].text}`,
+        });
+        pun.textContent = `${pool[idx].emoji} ${pool[idx].text}`;
+        pun.hidden = false;
+        show('round-end');
+        pop(pun);
+        btn.textContent = 'Siguiente tema ▶';
+        btn.onclick = () => newRound();
+      };
+    }
     // Pausa corta para que se vea la cara de derrota y suene el lamento.
     setTimeout(() => { show('round-end'); pop($('end-emoji')); }, 900);
   }
@@ -626,6 +796,7 @@
     $('end-heard').hidden = true;
     $('end-reason').textContent = `${laps} ${laps === 1 ? 'vuelta' : 'vueltas'} en ${state.topic.category.name}`;
     $('end-punishment').hidden = true;
+    renderScores($('end-scores'));
     $('btn-next-round').textContent = 'Siguiente tema ▶';
     $('btn-next-round').onclick = () => newRound();
     show('round-end');
@@ -633,11 +804,43 @@
     confetti(50);
   }
 
-  function showWinner() {
+  // ---------- resultados y premios ----------
+  function computeAwards() {
+    const ps = state.players;
+    const top = (list, key, dir) => list.slice().sort((a, b) => dir * (a[key] - b[key]))[0];
+    const out = [];
+    const fast = top(ps.filter((p) => p.fastest != null), 'fastest', 1);
+    if (fast) out.push({ emoji: '⚡', title: 'Más rápido', who: fast, detail: (fast.fastest / 1000).toFixed(1) + ' s' });
+    const hot = top(ps.filter((p) => p.best >= 2), 'best', -1);
+    if (hot) out.push({ emoji: '🔥', title: 'Mejor racha', who: hot, detail: `${hot.best} seguidas` });
+    const acc = top(ps.filter((p) => p.correct > 0), 'correct', -1);
+    if (acc) out.push({ emoji: '🧠', title: 'Más aciertos', who: acc, detail: String(acc.correct) });
+    const bad = top(ps.filter((p) => p.fails > 0), 'fails', -1);
+    if (bad) out.push({ emoji: '😅', title: 'Más fallas', who: bad, detail: String(bad.fails) });
+    return out;
+  }
+
+  function showResults() {
+    const eliminate = state.settings.mode === 'eliminar';
     const left = alive();
-    const w = left.length ? left[0].p : null;
-    if (w) setAvatar($('winner-avatar'), w);
-    $('winner-name').textContent = w ? w.name : '¡Nadie!';
+    const bySurvival = eliminate && left.length === 1;
+    const champ = bySurvival ? left[0].p : state.players.slice().sort((a, b) => b.score - a.score)[0];
+    $('results-title').textContent = bySurvival ? '¡Ganó!' : '🏁 Resultados';
+    if (champ) setAvatar($('winner-avatar'), champ);
+    $('winner-name').textContent = champ ? champ.name : '¡Nadie!';
+    renderScores($('final-scores'));
+    const box = $('awards');
+    box.innerHTML = '';
+    computeAwards().forEach((a) => {
+      const d = document.createElement('div');
+      d.className = 'award';
+      const e = document.createElement('div'); e.className = 'ae'; e.textContent = a.emoji;
+      const t = document.createElement('b'); t.textContent = a.title;
+      const w = document.createElement('span'); w.textContent = `${a.who.avatar} ${a.who.name}`;
+      const dt = document.createElement('small'); dt.textContent = a.detail;
+      d.append(e, t, w, dt);
+      box.appendChild(d);
+    });
     show('winner');
     Sfx.clap();
     confetti(90);
@@ -647,7 +850,7 @@
     stopTimer(); stopListening();
     state.turnOpen = false;
     try { speechSynthesis.cancel(); } catch (_) {}
-    state.players.forEach((p) => { p.alive = true; });
+    state.players.forEach(resetStats);
     renderRejected();
     renderPlayers();
     show('setup');
@@ -659,6 +862,9 @@
     $('btn-ok').onclick = () => acceptAnswer('', '');
     $('btn-bad').onclick = () => failTurn('El grupo dijo que falló', '');
     $('btn-quit-end').onclick = quit;
+    $('btn-results').onclick = showResults;
+    $('btn-joker-time').onclick = useTimeJoker;
+    $('btn-joker-pass').onclick = usePassJoker;
     $('btn-quit-winner').onclick = quit;
     $('btn-again').onclick = startFlow;
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
@@ -667,4 +873,5 @@
     initWelcome();
   }
   init();
+  window.__cc = { state, RETOS };   // gancho para pruebas automáticas
 })();

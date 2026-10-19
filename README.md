@@ -9,6 +9,15 @@ Es una PWA sin dependencias: HTML + JS puro.
 - **🎛️ Manual**: eliges dificultad, vueltas, tiempo y qué pasa al fallar; solo gira la ruleta de quién empieza.
 - El tema se anuncia y el reloj corre enseguida, sin pausa para pensar.
 
+## Retos, comodines y puntos
+- **Retos sorpresa** (≈40 % de los temas, desde el 2.º): ⚡ Relámpago (−2 s), 🐢 Tranquilo (+3 s), 🔄 Al revés
+  (el turno gira al otro lado), 💎 Doble puntos, 📏 Palabras largas (7+ letras) y ✂️ Palabras cortas (máx. 5).
+  El juez los aplica solo. Se apagan en "Más ajustes".
+- **Comodines** (uno de cada por jugador y partida): ⏱️ +4 s y ⏭️ Pasar.
+- **Puntos:** 10 por acierto + hasta 5 por rapidez + 3 por cada acierto seguido (máx. 12), por el multiplicador del reto.
+- **Castigos con ruleta:** en modo castigo gira una ruleta de 8 castigos al azar; puedes añadir los tuyos en "Más ajustes".
+- **Resultados:** marcador, campeón y premios (⚡ más rápido, 🔥 mejor racha, 🧠 más aciertos, 😅 más fallas).
+
 ## Experiencia
 - Al abrir la app pide el micrófono antes de nada. Si ya estaba permitido, entra directo; si está bloqueado,
   muestra cómo activarlo y deja reintentar o jugar sin voz (con botones ✔ / ✘).

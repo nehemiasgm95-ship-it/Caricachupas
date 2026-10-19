@@ -103,6 +103,7 @@
     setEnabled(v) { enabled = !!v; },
     clap() { play(scheduleClap); },
     sad() { play(scheduleSad); },
+    joker() { play((c, t, d) => { scheduleTone(c, t, d, 523, 90, 0.16); scheduleTone(c, t + 0.08, d, 784, 160, 0.16); }); },
     click() { play((c, t, d) => scheduleTone(c, t, d, 1400, 35, 0.12)); },
     tick() { play((c, t, d) => scheduleTone(c, t, d, 660, 90, 0.15)); },
     ding() { play((c, t, d) => { scheduleTone(c, t, d, 880, 140, 0.18); scheduleTone(c, t + 0.1, d, 1320, 200, 0.14); }); },

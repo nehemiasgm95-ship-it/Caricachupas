@@ -106,6 +106,16 @@
       </label>
       <label class="line check"><input id="voice" type="checkbox"> 📢 Anunciar el tema en voz alta</label>
       <label class="line check"><input id="sound" type="checkbox"> 👏 Aplausos y sonidos</label>
+      <label class="line check"><input id="retos" type="checkbox"> ⚡ Retos sorpresa entre temas</label>
+
+      <div class="line">
+        <span>😈 Tus castigos (entran a la ruleta)</span>
+        <form id="pun-form" class="inline-form" autocomplete="off">
+          <input id="pun-text" type="text" maxlength="60" placeholder="Ej: Hablar como pirata">
+          <button type="submit" class="btn small" aria-label="Añadir castigo">＋</button>
+        </form>
+        <ul id="pun-list" class="pun-list"></ul>
+      </div>
 
       <div id="rejected-box" class="rejected" hidden>
         <p class="sub">🧐 Palabras que no reconocí (<span id="rejected-count">0</span>)</p>
@@ -136,6 +146,7 @@
   <!-- Anuncio del tema -->
   <section id="screen-topic" class="screen center">
     <p class="chip" id="topic-round"></p>
+    <p id="topic-reto" class="reto" hidden><b id="topic-reto-name"></b><span id="topic-reto-text"></span></p>
     <div class="big-emoji" id="topic-emoji" aria-hidden="true"></div>
     <h1 id="topic-name" class="topic-name"></h1>
     <div class="letter" id="topic-letter" aria-label="Letra"></div>
@@ -148,8 +159,10 @@
     <div class="turn-top">
       <span class="chip"><span id="turn-emoji" aria-hidden="true"></span> <span id="turn-topic"></span></span>
       <span id="turn-lap" class="chip" hidden></span>
+      <span id="turn-reto" class="chip reto-chip" hidden></span>
     </div>
     <div class="who big"><span id="turn-avatar" class="avatar big"></span><h2 id="turn-player"></h2></div>
+    <div class="turn-stats"><span id="turn-score" class="chip">⭐ 0</span><span id="turn-streak" class="chip hot" hidden></span></div>
 
     <div class="ring" id="turn-ring">
       <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -165,6 +178,11 @@
     <p id="turn-heard" class="heard"></p>
     <div id="turn-used" class="used-chips"></div>
 
+    <div id="joker-bar" class="jokers">
+      <button id="btn-joker-time" class="joker" type="button" aria-label="Comodín: más tiempo">⏱️<small>+4 s</small></button>
+      <button id="btn-joker-pass" class="joker" type="button" aria-label="Comodín: pasar">⏭️<small>Pasar</small></button>
+    </div>
+
     <div id="manual-judge" class="row-btns" hidden>
       <button id="btn-ok" class="btn good">✔</button>
       <button id="btn-bad" class="btn bad">✘</button>
@@ -179,15 +197,21 @@
     <p id="end-heard" class="heard-small" hidden></p>
     <p id="end-reason" class="reason"></p>
     <p id="end-punishment" class="punishment" hidden></p>
+    <ol id="end-scores" class="scores"></ol>
     <button id="btn-next-round" class="btn big">Siguiente tema ▶</button>
-    <button id="btn-quit-end" class="btn link">Salir</button>
+    <div class="row-btns link-row">
+      <button id="btn-results" class="btn link">🏁 Ver resultados</button>
+      <button id="btn-quit-end" class="btn link">Salir</button>
+    </div>
   </section>
 
   <!-- Ganador -->
   <section id="screen-winner" class="screen center">
     <div class="big-emoji" aria-hidden="true">🏆</div>
-    <h1>¡Ganó!</h1>
+    <h1 id="results-title">¡Ganó!</h1>
     <div class="who big"><span id="winner-avatar" class="avatar big"></span><h2 id="winner-name"></h2></div>
+    <ol id="final-scores" class="scores"></ol>
+    <div id="awards" class="awards"></div>
     <button id="btn-again" class="btn big">🔁 Otra vez</button>
     <button id="btn-quit-winner" class="btn link">Cambiar jugadores</button>
   </section>

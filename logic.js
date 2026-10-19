@@ -169,7 +169,30 @@
     return ranked.slice(from, to);
   }
 
+  // ¿La palabra cumple el reto de largo (sin contar espacios)?
+  function meetsReto(answer, reto) {
+    if (!reto || (!reto.min && !reto.max)) return true;
+    const len = String(answer || '').replace(/\s/g, '').length;
+    if (reto.min && len < reto.min) return false;
+    if (reto.max && len > reto.max) return false;
+    return true;
+  }
+  // ¿Hay suficientes palabras en la lista con esa letra para que el reto sea jugable?
+  function retoFeasible(reto, index, letter, minWords = 3) {
+    if (!reto.min && !reto.max) return true;
+    const L = letter.toLowerCase();
+    return index.entries.filter((e) => e.initial === L && meetsReto(e.key, reto)).length >= minWords;
+  }
+
+  // Puntos de un acierto: base + rapidez (0 a 5) + racha (3 por acierto seguido, máx 12), por el multiplicador.
+  function scoreFor({ fracLeft, streak, mult }) {
+    const speed = Math.round(5 * Math.max(0, Math.min(1, fracLeft)));
+    const combo = Math.min(12, Math.max(0, streak - 1) * 3);
+    return (10 + speed + combo) * (mult || 1);
+  }
+
   const api = {
+    meetsReto, retoFeasible, scoreFor,
     normalize, clean, canonical, phonetic, distance,
     buildIndex, evaluate, rankedLetters, lettersForRange,
   };
