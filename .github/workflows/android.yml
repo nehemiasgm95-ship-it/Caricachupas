@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       tipo:
-        description: "debug = APK de prueba · release = AAB firmado para Google Play"
+        description: "debug = APK de prueba · release = AAB firmado para Google Play · release-smoke = prueba del flujo de tienda con llave temporal (no sirve para Play)"
         type: choice
-        options: [debug, release]
+        options: [debug, release, release-smoke]
         default: debug
   push:
     branches: [main]
@@ -54,14 +54,21 @@ jobs:
           npm run sync
 
       - name: APK de prueba
-        if: ${{ github.event.inputs.tipo != 'release' }}
+        if: ${{ github.event.inputs.tipo != 'release' && github.event.inputs.tipo != 'release-smoke' }}
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
 
+      - name: Datos del APK (paquete, versión de destino, permisos)
+        if: ${{ github.event.inputs.tipo != 'release' && github.event.inputs.tipo != 'release-smoke' }}
+        run: |
+          AAPT2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT2" dump badging android/app/build/outputs/apk/debug/app-debug.apk | grep -E "^(package|sdkVersion|targetSdkVersion|application-label:|launchable-activity)|uses-permission" | tee apk-info.txt
+          { echo '### Datos del APK'; echo '```'; cat apk-info.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Subir APK de prueba
-        if: ${{ github.event.inputs.tipo != 'release' }}
+        if: ${{ github.event.inputs.tipo != 'release' && github.event.inputs.tipo != 'release-smoke' }}
         uses: actions/upload-artifact@v4
         with:
           name: caricachupas-debug-apk
@@ -99,3 +106,24 @@ jobs:
           name: caricachupas-release-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 30
+
+      # --- Prueba de humo del flujo de tienda: llave temporal que se descarta. El AAB resultante NO sirve para Google Play.
+      - name: Llave temporal (solo prueba de humo)
+        if: ${{ github.event.inputs.tipo == 'release-smoke' }}
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/smoke.jks" -alias smoke -keyalg RSA -keysize 2048 -validity 2 \
+            -storepass smokepass -keypass smokepass -dname "CN=smoke"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/smoke.jks" >> "$GITHUB_ENV"
+
+      - name: AAB de prueba de humo
+        if: ${{ github.event.inputs.tipo == 'release-smoke' }}
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: smokepass
+          KEY_ALIAS: smoke
+          KEY_PASSWORD: smokepass
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon --stacktrace
+          ls -la app/build/outputs/bundle/release/
+          jarsigner -verify -verbose:summary app/build/outputs/bundle/release/app-release.aab | tail -3
