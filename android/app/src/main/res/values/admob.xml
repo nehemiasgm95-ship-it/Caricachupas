@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ID de aplicación de PRUEBA de Google. Reemplazar por el real de AdMob antes de publicar
+         (node scripts/check-release.js lo exige). -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-3940256099942544~3347511713</string>
+</resources>

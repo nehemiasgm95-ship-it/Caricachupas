@@ -5,7 +5,14 @@
   const Wheel = CCWheel;
 
   const $ = (id) => document.getElementById(id);
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // En la app Android existen window.CCNativeSR / CCNative / CCAds (ver native/); en la web no.
+  const NATIVE = !!window.CCNative;
+  const SR = window.CCNativeSR || window.SpeechRecognition || window.webkitSpeechRecognition;
+  const NO_ADS = {
+    onScreen() {}, async beforeNextTopic() { return false; }, canReward() { return false; },
+    async showReward() { return false; }, privacyOptionsRequired: false, async openPrivacyOptions() {},
+  };
+  const Ads = () => window.CCAds || NO_ADS;
   const STORE_KEY = 'caricachupas.v1';
   const REJECTED_KEY = 'caricachupas.rejected.v1';
   const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐯', '🐶', '🐱', '🐰', '🐨'];
@@ -89,6 +96,11 @@
   function show(name) {
     document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + name));
     window.scrollTo(0, 0);
+    try {
+      Promise.resolve(Ads().onScreen(name)).catch(() => {});
+      if (name === 'round-end') $('btn-reward').hidden = !Ads().canReward();
+      if (name === 'setup') $('btn-adprivacy').hidden = !Ads().privacyOptionsRequired;
+    } catch (_) { /* un anuncio nunca debe romper el juego */ }
   }
   let toastTimer;
   function toast(msg) {
@@ -156,12 +168,14 @@
 
   // ---------- micrófono: se pide al abrir la app ----------
   async function micPermission() {
+    if (NATIVE) return { state: await window.CCNative.mic.state(), onchange: null };
     try {
       const st = await navigator.permissions.query({ name: 'microphone' });
       return st; // PermissionStatus
     } catch (_) { return null; }
   }
   async function requestMic() {
+    if (NATIVE) return window.CCNative.mic.request();      // 'granted' | 'denied'
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return 'unsupported';
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -193,7 +207,7 @@
     $('btn-mic-retry').onclick = onMicClick;
     $('btn-no-mic').onclick = () => { Sfx.unlock(); enterSetup(false); };
 
-    if (!SR || !navigator.mediaDevices) {
+    if (!SR || (!NATIVE && !navigator.mediaDevices)) {
       setWelcome('unsupported');
       $('btn-no-mic').hidden = false;
       return;
@@ -900,7 +914,7 @@
     if (eliminate) {
       const last = team ? state.teams.some((t) => t.lives <= 0) : alive().length <= 1;
       btn.textContent = last ? 'Ver ganador 🏆' : 'Siguiente tema ▶';
-      btn.onclick = last ? showResults : () => newRound();
+      btn.onclick = last ? showResults : () => goNext();
     } else {
       // Castigo: una ruleta decide cuál toca.
       btn.textContent = '🎰 Girar castigo';
@@ -917,11 +931,20 @@
         show('round-end');
         pop(pun);
         btn.textContent = 'Siguiente tema ▶';
-        btn.onclick = () => newRound();
+        btn.onclick = () => goNext();
       };
     }
     // Pausa corta para que se vea la cara de derrota y suene el lamento.
     setTimeout(() => { show('round-end'); pop($('end-emoji')); }, 900);
+  }
+
+  // Pasar al siguiente tema. Es la pausa natural donde puede salir un anuncio (el micrófono ya está cerrado).
+  async function goNext() {
+    const b = $('btn-next-round');
+    b.disabled = true;
+    try { await Promise.race([Ads().beforeNextTopic(), wait(15000)]); } catch (_) { /* sin anuncio */ }
+    b.disabled = false;
+    newRound();
   }
 
   // Todos completaron las vueltas del tema sin fallar: se cambia de tema.
@@ -939,7 +962,7 @@
     renderScores($('end-scores'));
     renderTeamScores($('end-teams'));
     $('btn-next-round').textContent = 'Siguiente tema ▶';
-    $('btn-next-round').onclick = () => newRound();
+    $('btn-next-round').onclick = () => goNext();
     show('round-end');
     pop($('end-emoji'));
     confetti(50);
@@ -1241,11 +1264,27 @@
     $('btn-test-sr').onclick = testRecognition;
     $('btn-test-back').onclick = () => show('setup');
     $('btn-results').onclick = showResults;
+    $('btn-reward').onclick = async () => {
+      const b = $('btn-reward');
+      b.disabled = true;
+      const ok = await Ads().showReward();
+      b.disabled = false;
+      if (ok) {
+        state.players.forEach((p) => { p.jokers.time += 1; });
+        toast('🎁 +1 comodín de tiempo para todos');
+        Sfx.ding();
+        b.hidden = true;
+      } else {
+        toast('No se completó el anuncio');
+        b.hidden = !Ads().canReward();
+      }
+    };
+    $('btn-adprivacy').onclick = () => { Ads().openPrivacyOptions(); };
     $('btn-joker-time').onclick = useTimeJoker;
     $('btn-joker-pass').onclick = usePassJoker;
     $('btn-quit-winner').onclick = quit;
     $('btn-again').onclick = startFlow;
-    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    if (!NATIVE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
     initInstall();

@@ -1,0 +1,15 @@
+{
+  "appId": "com.nehemiasgm95.caricachupas",
+  "appName": "Caricachupas",
+  "webDir": "www",
+  "backgroundColor": "#1b1033",
+  "loggingBehavior": "none",
+  "allowMixedContent": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "webContentsDebuggingEnabled": false,
+    "zoomEnabled": false
+  }
+}

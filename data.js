@@ -456,7 +456,7 @@
   };
 
   const PUNISHMENTS = [
-    { emoji: '🍺', text: 'Toma un trago (o un vaso de agua)' },
+    { emoji: '💧', text: 'Toma un vaso de agua de un solo trago' },
     { emoji: '👅', text: 'Di un trabalenguas sin equivocarte' },
     { emoji: '🐒', text: 'Imita a un animal hasta que el grupo se ría' },
     { emoji: '🤫', text: 'Cuenta un secreto vergonzoso' },

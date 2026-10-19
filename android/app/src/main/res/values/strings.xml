@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Caricachupas</string>
+    <string name="title_activity_main">Caricachupas</string>
+    <string name="package_name">com.nehemiasgm95.caricachupas</string>
+    <string name="custom_url_scheme">com.nehemiasgm95.caricachupas</string>
+</resources>
