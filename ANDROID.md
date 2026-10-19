@@ -62,6 +62,18 @@ Al terminar, descarga **caricachupas-release-aab** y súbelo a Play Console.
 - [ ] Versión de tienda instalada desde la prueba cerrada (no solo el APK de prueba)
 - [ ] Probar la versión de tienda antes de activar R8 (ofuscación); ver nota en `android/app/build.gradle`
 
+## Permisos del paquete final
+La app declara solo 3 permisos (internet, micrófono, ID de publicidad). Al compilar, el SDK de anuncios de Google agrega
+otros propios, y el paquete final queda con estos (verificado en el APK compilado, ver el resumen de la ejecución en Actions):
+
+`INTERNET`, `RECORD_AUDIO`, `AD_ID`, `ACCESS_NETWORK_STATE`, `ACCESS_ADSERVICES_AD_ID`, `ACCESS_ADSERVICES_ATTRIBUTION`,
+`ACCESS_ADSERVICES_TOPICS`, `WAKE_LOCK`, `FOREGROUND_SERVICE`.
+
+Tenlo presente al llenar Play Console: la sección de seguridad de los datos y las declaraciones de permisos deben
+reflejar lo que realmente trae el paquete, no solo lo que declara nuestro manifiesto. Si Play pide declarar el uso de
+servicios en primer plano, ese permiso lo trae el SDK de anuncios; la app no lo usa por su cuenta. No quitar estos
+permisos a ciegas (podrían romper los anuncios): primero confirmar en la prueba cerrada.
+
 ## Notas técnicas
 - Apunta a Android 16 (API 36), requisito de Google Play para apps nuevas desde el 31-ago-2026.
 - Voz: plugin nativo (`@capacitor-community/speech-recognition`) con un adaptador que imita la Web Speech API
