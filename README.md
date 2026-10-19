@@ -38,6 +38,20 @@ Es una PWA sin dependencias: HTML + JS puro.
 - **🎙️ Micrófono continuo por tema** (prueba): una sola apertura por tema, sin pitido ni retraso en cada turno.
   Lo dicho antes del turno se ignora y se cierra al terminar el tema.
 
+## Retroalimentación
+Botón **💬 Tu opinión** (inicio y resultados): calificación con caritas, tipo (idea / error / falta algo / me gustó),
+mensaje, contacto opcional y, si la persona lo permite, las palabras que el juego no reconoció. Sin internet, se guarda
+y se envía al reconectar.
+
+Para recibirlas (gratis, sin servidor): crea un **Google Form** con 6 preguntas de respuesta corta (calificación, tipo,
+mensaje, contacto, palabras, versión), obtén su enlace con *Obtener enlace prellenado* para ver los `entry.XXXXXX` de
+cada pregunta y llena `config.js` (`formUrl` = la URL del formulario terminada en `/formResponse`, y `fields`).
+Las respuestas llegan a una hoja de cálculo. Mientras no esté configurado, la app ofrece *Compartir* el mensaje
+(WhatsApp, correo…) o copiarlo.
+
+`privacidad.html` es un **borrador** de política de privacidad (Google Play exige un enlace público): completa los datos
+entre corchetes antes de usarla.
+
 ## Experiencia
 - Al abrir la app pide el micrófono antes de nada. Si ya estaba permitido, entra directo; si está bloqueado,
   muestra cómo activarlo y deja reintentar o jugar sin voz (con botones ✔ / ✘).

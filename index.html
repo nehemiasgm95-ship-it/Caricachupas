@@ -146,10 +146,61 @@
         </div>
       </div>
       <p class="legal">Los nombres de personajes, marcas, equipos y artistas son de sus dueños. Este juego no está
-        afiliado a ellos y solo usa texto.</p>
+        afiliado a ellos y solo usa texto. <a id="lnk-privacy" href="privacidad.html" target="_blank" rel="noopener">Privacidad</a></p>
     </details>
 
+    <button id="btn-feedback" class="btn link" type="button">💬 Tu opinión</button>
     <button id="btn-play" class="btn big sticky" disabled>🎰 ¡Girar ruleta!</button>
+  </section>
+
+  <!-- Tu opinión -->
+  <section id="screen-feedback" class="screen">
+    <h1 class="fb-title">💬 Tu opinión</h1>
+    <p class="sub">Ayúdanos a mejorar Caricachupas.</p>
+
+    <form id="fb-form" class="fb-form" autocomplete="off">
+      <div class="field">
+        <span class="flabel">¿Qué tal te pareció?</span>
+        <div class="seg" id="fb-rating" role="radiogroup" aria-label="Calificación">
+          <button type="button" data-value="1" role="radio" aria-label="Muy mal">😡</button>
+          <button type="button" data-value="2" role="radio" aria-label="Mal">😕</button>
+          <button type="button" data-value="3" role="radio" aria-label="Regular">😐</button>
+          <button type="button" data-value="4" role="radio" aria-label="Bien">🙂</button>
+          <button type="button" data-value="5" role="radio" aria-label="Excelente">🤩</button>
+        </div>
+      </div>
+      <div class="field">
+        <span class="flabel">Es sobre…</span>
+        <div class="seg wrap" id="fb-type" role="radiogroup" aria-label="Tipo de comentario">
+          <button type="button" data-value="idea" role="radio">💡<small>Idea</small></button>
+          <button type="button" data-value="error" role="radio">🐞<small>Error</small></button>
+          <button type="button" data-value="palabra" role="radio">🗂️<small>Falta algo</small></button>
+          <button type="button" data-value="gusto" role="radio">❤️<small>Me gustó</small></button>
+        </div>
+      </div>
+      <label class="field">
+        <span class="flabel">Cuéntanos</span>
+        <textarea id="fb-message" rows="4" maxlength="1000" placeholder="Qué te gustó, qué falló o qué temas quieres ver…"></textarea>
+      </label>
+      <label class="field">
+        <span class="flabel">Contacto (opcional)</span>
+        <input id="fb-contact" type="text" maxlength="80" placeholder="Correo o WhatsApp">
+      </label>
+      <label id="fb-words-row" class="line check" hidden>
+        <input id="fb-words" type="checkbox" checked>
+        <span>Incluir las <b id="fb-words-count">0</b> palabras que no reconocí (nos ayudan a ampliar las listas)</span>
+      </label>
+      <button id="fb-send" class="btn big" type="submit">📨 Enviar</button>
+      <p class="legal">Solo enviamos lo que ves aquí, más la versión de la app. <a id="lnk-privacy-fb" href="privacidad.html" target="_blank" rel="noopener">Privacidad</a></p>
+    </form>
+
+    <div id="fb-thanks" class="fb-thanks" hidden>
+      <div class="big-emoji" aria-hidden="true">🎉</div>
+      <h1>¡Gracias!</h1>
+      <p id="fb-thanks-note" class="sub"></p>
+      <button id="fb-play" class="btn big" type="button" hidden>⭐ Calificar en Google Play</button>
+    </div>
+    <button id="fb-back" class="btn link" type="button">← Volver</button>
   </section>
 
   <!-- Prueba de micrófono -->
@@ -258,6 +309,7 @@
     <ol id="final-scores" class="scores"></ol>
     <div id="awards" class="awards"></div>
     <button id="btn-again" class="btn big">🔁 Otra vez</button>
+    <button id="btn-feedback-end" class="btn link" type="button">💬 ¿Qué te pareció?</button>
     <button id="btn-quit-winner" class="btn link">Cambiar jugadores</button>
   </section>
 
@@ -265,6 +317,7 @@
   <div id="fx" aria-hidden="true"></div>
 </main>
 
+<script src="config.js"></script>
 <script src="data.js"></script>
 <script src="logic.js"></script>
 <script src="sfx.js"></script>

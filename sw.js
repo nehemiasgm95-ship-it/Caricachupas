@@ -1,8 +1,8 @@
 // Service worker: la app abre sin conexión y siempre intenta traer la versión más nueva primero.
-const CACHE = 'caricachupas-v7';
+const CACHE = 'caricachupas-v8';
 const FILES = [
-  './', 'index.html', 'style.css', 'data.js', 'logic.js', 'sfx.js', 'wheel.js', 'app.js', 'manifest.json',
-  'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png',
+  './', 'index.html', 'style.css', 'data.js', 'logic.js', 'sfx.js', 'config.js', 'wheel.js', 'app.js', 'manifest.json',
+  'privacidad.html', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (e) => {

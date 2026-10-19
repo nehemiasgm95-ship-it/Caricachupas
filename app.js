@@ -1122,6 +1122,115 @@
     setTimeout(() => { try { rec.stop(); } catch (_) {} }, 6000);
   }
 
+  // ---------- retroalimentación ----------
+  const CFG = window.CC_CONFIG || {};
+  const FB_QUEUE_KEY = 'caricachupas.feedback.queue.v1';
+  const fb = { rating: '', type: '', from: 'setup', lastSent: 0 };
+
+  function readQueue() { try { return JSON.parse(localStorage.getItem(FB_QUEUE_KEY) || '[]'); } catch (_) { return []; } }
+  function writeQueue(q) { try { localStorage.setItem(FB_QUEUE_KEY, JSON.stringify(q.slice(-20))); } catch (_) { /* sin almacenamiento */ } }
+  function fbConfigured() { const c = CFG.feedback || {}; return !!(c.formUrl && c.fields && c.fields.message); }
+  function fbMeta() {
+    return `v${CFG.version || '?'} · ${state.settings.lang} · ${state.settings.difficulty} · ${state.settings.teams ? 'equipos' : 'solo'}`;
+  }
+  function fbBody(item) {
+    const f = CFG.feedback.fields, body = new URLSearchParams();
+    ['rating', 'type', 'message', 'contact', 'words', 'meta'].forEach((k) => { if (f[k]) body.set(f[k], item[k] || ''); });
+    return body;
+  }
+  // Google Forms no devuelve CORS: con no-cors solo sabemos si hubo red o no, y eso basta.
+  async function postFeedback(item) {
+    await fetch(CFG.feedback.formUrl, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: fbBody(item),
+    });
+  }
+  let flushing = false;   // el evento "online" puede llegar dos veces: un solo envío de cola a la vez
+  async function flushFeedbackQueue() {
+    if (flushing || !fbConfigured()) return;
+    flushing = true;
+    try {
+      const q = readQueue();
+      if (!q.length) return;
+      writeQueue([]);                       // se sacan de la cola antes de enviar: nunca se duplican
+      const rest = [];
+      for (const it of q) { try { await postFeedback(it); } catch (_) { rest.push(it); } }
+      if (rest.length) writeQueue(readQueue().concat(rest));
+    } finally { flushing = false; }
+  }
+  function feedbackText(it) {
+    return ['Caricachupas · opinión', `Calificación: ${it.rating || '-'}/5`, `Tipo: ${it.type || '-'}`, it.message,
+      `Contacto: ${it.contact || '-'}`, it.words ? 'Palabras no reconocidas:\n' + it.words : '', `(${it.meta})`]
+      .filter(Boolean).join('\n');
+  }
+  // Sin formulario configurado: compartir (WhatsApp, correo...) o copiar.
+  async function shareFeedback(it) {
+    const text = feedbackText(it);
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Opinión sobre Caricachupas', text }); return 'shared'; }
+      catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
+    }
+    const mail = CFG.feedback && CFG.feedback.email;
+    if (mail) {
+      location.href = `mailto:${mail}?subject=${encodeURIComponent('Opinión sobre Caricachupas')}&body=${encodeURIComponent(text)}`;
+      return 'mailto';
+    }
+    try { await navigator.clipboard.writeText(text); return 'copied'; } catch (_) { return 'fail'; }
+  }
+
+  function clearSeg(id) { $(id).querySelectorAll('button').forEach((b) => b.setAttribute('aria-checked', 'false')); }
+  function openFeedback(from) {
+    fb.from = from; fb.rating = ''; fb.type = '';
+    clearSeg('fb-rating'); clearSeg('fb-type');
+    $('fb-message').value = ''; $('fb-contact').value = '';
+    $('fb-form').hidden = false; $('fb-thanks').hidden = true; $('fb-send').disabled = false;
+    $('fb-back').textContent = '← Volver';
+    const n = readRejected().length;
+    $('fb-words-row').hidden = n === 0;
+    $('fb-words-count').textContent = n;
+    show('feedback');
+  }
+  async function submitFeedback(ev) {
+    ev.preventDefault();
+    const message = $('fb-message').value.trim();
+    if (!fb.rating && !message) { toast('Elige una carita o escribe algo 🙂'); return; }
+    if (Date.now() - fb.lastSent < 8000) { toast('Un momento…'); return; }
+    const words = !$('fb-words-row').hidden && $('fb-words').checked
+      ? readRejected().map((r) => `${r.topic} (${r.letter}): ${r.said}`).join('\n') : '';
+    const item = { rating: fb.rating, type: fb.type, message, contact: $('fb-contact').value.trim(), words, meta: fbMeta() };
+    $('fb-send').disabled = true;
+    let note;
+    if (fbConfigured()) {
+      try { await postFeedback(item); note = 'Recibimos tu mensaje.'; }
+      catch (_) { const q = readQueue(); q.push(item); writeQueue(q); note = 'Sin internet: lo enviaremos cuando vuelvas a conectarte.'; }
+    } else {
+      const r = await shareFeedback(item);
+      if (r === 'cancel') { $('fb-send').disabled = false; return; }
+      note = r === 'copied' ? 'Copiamos tu mensaje: pégalo donde quieras enviarlo.'
+        : r === 'fail' ? 'No pudimos enviarlo desde aquí.' : 'Gracias por compartirlo.';
+    }
+    fb.lastSent = Date.now();
+    $('fb-form').hidden = true;
+    $('fb-thanks').hidden = false;
+    $('fb-thanks-note').textContent = note;
+    $('fb-play').hidden = !CFG.playUrl;
+    $('fb-back').textContent = '← Listo';
+    Sfx.ding(); confetti(30);
+  }
+  function initFeedback() {
+    bindSeg('fb-rating', () => fb.rating, (v) => { fb.rating = v; });
+    bindSeg('fb-type', () => fb.type, (v) => { fb.type = v; });
+    $('fb-form').onsubmit = submitFeedback;
+    $('btn-feedback').onclick = () => openFeedback('setup');
+    $('btn-feedback-end').onclick = () => openFeedback('winner');
+    $('fb-back').onclick = () => show(fb.from);
+    $('fb-play').onclick = () => { if (CFG.playUrl) window.open(CFG.playUrl, '_blank', 'noopener'); };
+    if (CFG.privacyUrl) ['lnk-privacy', 'lnk-privacy-fb'].forEach((id) => { $(id).href = CFG.privacyUrl; });
+    window.addEventListener('online', flushFeedbackQueue);
+    flushFeedbackQueue();
+  }
+
   // ---------- arranque ----------
   function init() {
     initSetup();
@@ -1140,6 +1249,7 @@
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
     initInstall();
+    initFeedback();
     initWelcome();
   }
   init();
