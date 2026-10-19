@@ -6,7 +6,12 @@
   <meta name="theme-color" content="#1b1033">
   <title>Caricachupas</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Caricachupas">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -34,6 +39,8 @@
       <p class="sub">Abre el juego en <b>Chrome</b> (Android).</p>
     </div>
     <button id="btn-no-mic" class="btn link" hidden>Jugar sin voz</button>
+    <button class="btn small js-install" type="button" hidden>📲 Instalar app</button>
+    <p class="sub js-install-ios" hidden>📲 En iPhone: toca Compartir ⬆️ y “Añadir a pantalla de inicio”</p>
   </section>
 
   <!-- Jugadores y ajustes -->
@@ -116,6 +123,10 @@
       <label class="line check"><input id="voice" type="checkbox"> 📢 Anunciar el tema en voz alta</label>
       <label class="line check"><input id="sound" type="checkbox"> 👏 Aplausos y sonidos</label>
       <label class="line check"><input id="retos" type="checkbox"> ⚡ Retos sorpresa entre temas</label>
+      <label class="line check"><input id="warmmic" type="checkbox"> 🎙️ Micrófono continuo por tema (prueba)</label>
+      <button id="btn-mictest" type="button" class="btn small">🔊 Probar micrófono</button>
+      <button class="btn small js-install" type="button" hidden>📲 Instalar app</button>
+      <p class="sub js-install-ios" hidden>📲 En iPhone: toca Compartir ⬆️ y “Añadir a pantalla de inicio”</p>
 
       <div class="line">
         <span>😈 Tus castigos (entran a la ruleta)</span>
@@ -139,6 +150,22 @@
     </details>
 
     <button id="btn-play" class="btn big sticky" disabled>🎰 ¡Girar ruleta!</button>
+  </section>
+
+  <!-- Prueba de micrófono -->
+  <section id="screen-mictest" class="screen center">
+    <h1>🎙️ Probar micrófono</h1>
+    <div class="meter" aria-hidden="true"><div id="mic-level"></div></div>
+    <p id="mic-verdict" class="reason">Toca el botón y di “hola” normal, a un palmo del teléfono.</p>
+    <button id="btn-test-level" class="btn big">🔊 Probar volumen</button>
+    <p id="mic-heard" class="heard">&nbsp;</p>
+    <button id="btn-test-sr" class="btn big">🗣️ Probar reconocimiento</button>
+    <ul class="tips">
+      <li>📏 Habla a 20–30 cm del teléfono</li>
+      <li>🔇 Baja la música o la tele mientras juegan</li>
+      <li>📍 Apunta el micrófono (abajo del teléfono) hacia quien responde</li>
+    </ul>
+    <button id="btn-test-back" class="btn link">← Volver</button>
   </section>
 
   <!-- Equipos -->

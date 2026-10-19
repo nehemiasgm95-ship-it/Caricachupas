@@ -24,7 +24,7 @@
   // ---------- estado ----------
   const state = {
     players: [],            // { name, alive, avatar, hue }
-    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, teams: false, customPunishments: [] },
+    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, teams: false, warmMic: false, customPunishments: [] },
     micOk: false,           // false = se juega sin voz (botones ✔ / ✘)
     round: 0,
     topic: null,            // { category, letter, index, used:Map(clave->palabra), turns }
@@ -304,6 +304,7 @@
     $('voice').checked = state.settings.voice;
     $('sound').checked = state.settings.sound;
     $('retos').checked = state.settings.retos;
+    $('warmmic').checked = state.settings.warmMic;
     renderPunishments();
     Sfx.setEnabled(state.settings.sound);
 
@@ -342,6 +343,8 @@
     $('voice').onchange = (e) => { state.settings.voice = e.target.checked; save(); };
     $('sound').onchange = (e) => { state.settings.sound = e.target.checked; Sfx.setEnabled(e.target.checked); save(); };
     $('retos').onchange = (e) => { state.settings.retos = e.target.checked; save(); };
+    $('warmmic').onchange = (e) => { state.settings.warmMic = e.target.checked; closeMic(); save(); };
+    $('btn-mictest').onclick = () => { show('mictest'); };
     $('pun-form').onsubmit = (e) => {
       e.preventDefault();
       const text = $('pun-text').value.trim();
@@ -445,6 +448,7 @@
   // Inicio: [ruleta de dificultad] -> ruleta de quién empieza -> el tema arranca solo.
   async function startFlow() {
     Sfx.unlock();
+    keepAwake();
     state.players.forEach(resetStats);
     state.reto = null; state.lastReto = null; state.dir = 1;
     state.round = 0;
@@ -566,8 +570,6 @@
 
   // ---------- turno ----------
   let deadline = 0, tickId = null, lastSecond = null;
-  let listener = null;
-
   function setClock(ms) {
     const total = turnSeconds() * 1000;
     const frac = Math.max(0, Math.min(1, ms / total));
@@ -686,18 +688,25 @@
     startListening();
   }
 
-  function startListening() {
-    if (!SR || !state.micOk) return;
-    stopListening();
+  // Reconocedor de voz. Dos modos:
+  //  - normal: se abre al empezar cada turno y se cierra al terminar.
+  //  - continuo ("warmMic"): se abre una vez por tema y sigue escuchando entre turnos, así no hay
+  //    pitido de arranque ni retraso al empezar cada turno. Lo dicho entre turnos se ignora.
+  let listener = null;   // modo normal
+  let warm = null;       // modo continuo
+
+  function openRecognizer(continuous) {
     const rec = new SR();
     rec.lang = state.settings.lang;
     rec.interimResults = true;
-    rec.continuous = false;
+    rec.continuous = continuous;
     rec.maxAlternatives = 5;
-    let active = true;
+    const h = { active: true, skip: 0, len: 0, stop() { h.active = false; try { rec.abort(); } catch (_) {} } };
 
     rec.onresult = (e) => {
+      h.len = e.results.length;
       if (!state.turnOpen) return;
+      if (continuous && e.results.length - 1 < h.skip) return;   // restos de antes de este turno
       const res = e.results[e.results.length - 1];
       const alts = Array.from(res, (a) => a.transcript);
       if (!alts[0]) return;
@@ -710,7 +719,7 @@
     };
     rec.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        active = false;
+        h.active = false;
         state.micOk = false;
         $('manual-judge').hidden = false;
         setHeard('🔒 Micrófono bloqueado', 'no');
@@ -718,15 +727,35 @@
       }
     };
     rec.onend = () => {
-      // El reconocedor se corta solo tras un silencio: reiniciarlo mientras haya turno.
-      if (active && state.turnOpen) {
+      // El reconocedor se corta solo tras un silencio: reiniciarlo mientras toque escuchar.
+      if (h.active && (continuous || state.turnOpen)) {
+        h.skip = 0; h.len = 0;
         try { rec.start(); } catch (_) { /* ya iniciado */ }
       }
     };
-    listener = { stop() { active = false; try { rec.abort(); } catch (_) {} } };
     try { rec.start(); } catch (_) { setHeard('No pude abrir el micrófono', 'no'); }
+    return h;
   }
-  function stopListening() { if (listener) { listener.stop(); listener = null; } }
+
+  function startListening() {
+    if (!SR || !state.micOk) return;
+    if (state.settings.warmMic) {
+      if (warm && warm.active) warm.skip = warm.len;   // ya escuchando: ignorar lo anterior
+      else warm = openRecognizer(true);
+      return;
+    }
+    stopListening();
+    listener = openRecognizer(false);
+  }
+  function stopListening() {
+    if (warm) warm.skip = warm.len;                    // continuo: queda abierto, solo se ignora
+    if (listener) { listener.stop(); listener = null; }
+  }
+  // Cierra el micrófono del todo (fin de tema, resultados, salir).
+  function closeMic() {
+    if (warm) { warm.stop(); warm = null; }
+    if (listener) { listener.stop(); listener = null; }
+  }
 
   function check(text) {
     const r = evaluate({
@@ -845,6 +874,7 @@
 
   // ---------- fin de ronda ----------
   function endRound(reason, heard) {
+    closeMic();
     const player = state.players[state.current];
     const eliminate = state.settings.mode === 'eliminar';
     const team = state.teams ? state.teams[player.team] : null;
@@ -896,6 +926,7 @@
 
   // Todos completaron las vueltas del tema sin fallar: se cambia de tema.
   function topicCleared() {
+    closeMic();
     const laps = state.settings.laps;
     $('end-emoji').textContent = '🎉';
     $('end-title').textContent = '¡Tema superado!';
@@ -931,6 +962,8 @@
   }
 
   function showResults() {
+    closeMic();
+    releaseWake();
     const eliminate = state.settings.mode === 'eliminar';
     const left = alive();
     const bySurvival = eliminate && left.length === 1;
@@ -971,7 +1004,7 @@
   }
 
   function quit() {
-    stopTimer(); stopListening();
+    stopTimer(); closeMic(); releaseWake();
     state.turnOpen = false;
     try { speechSynthesis.cancel(); } catch (_) {}
     state.players.forEach(resetStats);
@@ -980,12 +1013,124 @@
     show('setup');
   }
 
+  // ---------- pantalla encendida ----------
+  let wake = null, wakeWanted = false;
+  async function keepAwake() {
+    wakeWanted = true;
+    try {
+      if ('wakeLock' in navigator && !wake) {
+        wake = await navigator.wakeLock.request('screen');
+        wake.addEventListener('release', () => { wake = null; });
+      }
+    } catch (_) { wake = null; }
+  }
+  function releaseWake() { wakeWanted = false; try { if (wake) wake.release(); } catch (_) {} wake = null; }
+  // El sistema suelta el bloqueo al ocultar la app: recuperarlo al volver.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && wakeWanted) keepAwake();
+  });
+
+  // ---------- instalación como app ----------
+  let installEvent = null;
+  const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  function renderInstall() {
+    const can = !isStandalone() && !!installEvent;
+    document.querySelectorAll('.js-install').forEach((b) => { b.hidden = !can; });
+    const ios = !isStandalone() && isIOS && !installEvent;
+    document.querySelectorAll('.js-install-ios').forEach((el) => { el.hidden = !ios; });
+  }
+  function initInstall() {
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e; renderInstall(); });
+    window.addEventListener('appinstalled', () => { installEvent = null; renderInstall(); toast('✅ App instalada'); });
+    document.querySelectorAll('.js-install').forEach((b) => {
+      b.onclick = async () => {
+        if (!installEvent) return;
+        installEvent.prompt();
+        try { await installEvent.userChoice; } catch (_) {}
+        installEvent = null;
+        renderInstall();
+      };
+    });
+    renderInstall();
+  }
+
+  // ---------- prueba de micrófono ----------
+  let testBusy = false;
+  async function testLevel() {
+    if (testBusy) return;
+    testBusy = true;
+    const verdict = $('mic-verdict'), bar = $('mic-level'), btn = $('btn-test-level');
+    btn.disabled = true;
+    verdict.textContent = '🎙️ Escuchando… di “hola” con tu voz normal';
+    let stream, ctx;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+      });
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const an = ctx.createAnalyser();
+      an.fftSize = 1024;
+      ctx.createMediaStreamSource(stream).connect(an);
+      const buf = new Float32Array(an.fftSize);
+      let peak = 0;
+      const t0 = performance.now();
+      await new Promise((resolve) => {
+        (function loop() {
+          an.getFloatTimeDomainData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+          const rms = Math.sqrt(sum / buf.length);
+          peak = Math.max(peak, rms);
+          bar.style.width = Math.min(100, Math.round(rms * 600)) + '%';
+          if (performance.now() - t0 < 3500) requestAnimationFrame(loop); else resolve();
+        })();
+      });
+      verdict.textContent = peak < 0.015 ? '🔇 Casi no se oye. Acércate o revisa el permiso del micrófono.'
+        : peak < 0.05 ? '🔉 Se oye bajo. Acércate un poco al teléfono.'
+        : peak < 0.45 ? '✅ ¡Se oye bien!'
+        : '🔊 Muy fuerte o muy pegado. Aléjate un poco.';
+      verdict.dataset.peak = peak.toFixed(3);
+    } catch (e) {
+      verdict.textContent = '🔒 No pude abrir el micrófono. Revisa el permiso del navegador.';
+    } finally {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      if (ctx) try { ctx.close(); } catch (_) {}
+      bar.style.width = '0';
+      btn.disabled = false;
+      testBusy = false;
+    }
+  }
+  function testRecognition() {
+    const out = $('mic-heard'), btn = $('btn-test-sr');
+    if (!SR) { out.textContent = '😕 Este navegador no entiende voz.'; return; }
+    btn.disabled = true;
+    out.textContent = '🎙️ Habla ahora…';
+    const rec = new SR();
+    rec.lang = state.settings.lang;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    let heard = '';
+    const finish = () => {
+      btn.disabled = false;
+      out.textContent = heard ? `✅ Te entendí: “${heard}”` : '🤔 No entendí nada. Prueba más cerca o más fuerte.';
+    };
+    rec.onresult = (e) => { heard = e.results[e.results.length - 1][0].transcript; out.textContent = '🗣️ ' + heard; };
+    rec.onerror = (e) => { if (e.error === 'not-allowed') out.textContent = '🔒 Micrófono bloqueado.'; };
+    rec.onend = finish;
+    try { rec.start(); } catch (_) { finish(); }
+    setTimeout(() => { try { rec.stop(); } catch (_) {} }, 6000);
+  }
+
   // ---------- arranque ----------
   function init() {
     initSetup();
     $('btn-ok').onclick = () => acceptAnswer('', '');
     $('btn-bad').onclick = () => failTurn('El grupo dijo que falló', '');
     $('btn-quit-end').onclick = quit;
+    $('btn-test-level').onclick = testLevel;
+    $('btn-test-sr').onclick = testRecognition;
+    $('btn-test-back').onclick = () => show('setup');
     $('btn-results').onclick = showResults;
     $('btn-joker-time').onclick = useTimeJoker;
     $('btn-joker-pass').onclick = usePassJoker;
@@ -994,6 +1139,7 @@
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
+    initInstall();
     initWelcome();
   }
   init();

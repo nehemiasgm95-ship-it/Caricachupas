@@ -25,6 +25,19 @@ Es una PWA sin dependencias: HTML + JS puro.
 - Al fallar: con **Vidas** el equipo pierde ❤️ (3 por equipo) y gana el otro al quedarse sin vidas; con **Castigo**
   gira la ruleta y se decide por puntos al ver los resultados.
 
+## Instalar como app (PWA)
+- Chrome (Android): aparece el botón **📲 Instalar app** (bienvenida y "Más ajustes"), o menú ⋮ → *Instalar aplicación*.
+  iPhone (Safari): Compartir ⬆️ → *Añadir a pantalla de inicio* (la app lo recuerda con un aviso).
+- Íconos 192/512, *maskable* y de iPhone en `icons/`; funciona sin conexión; siempre intenta traer la versión más
+  nueva primero (red primero, caché de respaldo); mantiene la pantalla encendida durante la partida.
+- Nota: el reconocimiento de voz de Chrome usa internet. Sin conexión el juego abre pero hay que usar ✔ / ✘.
+
+## Micrófono
+- **🔊 Probar micrófono** (Más ajustes): medidor de volumen en vivo con veredicto (bajo / bien / muy fuerte) y prueba
+  de reconocimiento que muestra lo que entendió.
+- **🎙️ Micrófono continuo por tema** (prueba): una sola apertura por tema, sin pitido ni retraso en cada turno.
+  Lo dicho antes del turno se ignora y se cierra al terminar el tema.
+
 ## Experiencia
 - Al abrir la app pide el micrófono antes de nada. Si ya estaba permitido, entra directo; si está bloqueado,
   muestra cómo activarlo y deja reintentar o jugar sin voz (con botones ✔ / ✘).
