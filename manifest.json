@@ -1,0 +1,13 @@
+{
+  "name": "Caricachupas",
+  "short_name": "Caricachupas",
+  "description": "El juego de categorías con micrófono, cronómetro y juez automático.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1033",
+  "theme_color": "#1b1033",
+  "lang": "es",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
