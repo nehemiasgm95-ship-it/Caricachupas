@@ -436,6 +436,16 @@
     { id: 'herramientas', name: 'Herramientas', level: 3, list: HERRAMIENTAS },
   ];
 
+  const EMOJI = {
+    cuatro_patas: '🐕', animales: '🦁', frutas: '🍓', colores: '🎨', nombres_mujer: '👩', nombres_hombre: '👨',
+    comida_mx: '🌮', cuerpo: '🦴', deportes: '⚽', simpson: '🍩', disney: '🏰', superheroes: '🦸', cocina: '🍳',
+    super: '🛒', bebidas: '🥤', dulces: '🍬', transporte: '🚗', ropa: '👕', escuela: '✏️', equipos: '🏟️',
+    paises: '🌎', verduras: '🥕', profesiones: '👷', autos: '🏎️', peliculas: '🎬', series: '📺', cantantes: '🎤',
+    futbolistas: '🥅', selecciones: '🏆', estados: '🗺️', pokemon: '⚡', dragonball: '🐉', videojuegos: '🎮',
+    capitales: '🏙️', aves: '🦜', flores: '🌸', instrumentos: '🎸', herramientas: '🔧',
+  };
+  CATEGORIES.forEach((c) => { c.emoji = EMOJI[c.id] || '❓'; });
+
   // Dificultad: qué temas (level) y qué letras entran, y el tiempo sugerido por turno.
   // letters: porción del ranking de letras (de la más fácil a la más rara) que se usa.
   const DIFFICULTIES = {

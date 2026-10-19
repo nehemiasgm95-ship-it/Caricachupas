@@ -12,126 +12,173 @@
 <body>
 <main id="app">
 
-  <!-- Configuración -->
-  <section id="screen-setup" class="screen active">
-    <h1>🎤 Caricachupas</h1>
-    <p class="sub">Di el tema, responde antes de que se acabe el tiempo.</p>
+  <!-- Bienvenida: pide el micrófono antes de nada -->
+  <section id="screen-welcome" class="screen active" data-state="idle">
+    <div class="hero-icon" aria-hidden="true">🎤</div>
+    <h1 class="title">Caricachupas</h1>
+    <p class="lead">Di la respuesta en voz alta.<br>La app escucha y decide.</p>
 
-    <h2>Jugadores</h2>
+    <div class="state state-idle">
+      <button id="btn-mic" class="btn big pulse">🎙️ Activar micrófono</button>
+    </div>
+    <div class="state state-denied">
+      <p class="note">🔒 Micrófono bloqueado</p>
+      <ol class="steps">
+        <li>Toca el candado 🔒 junto a la dirección</li>
+        <li>Permisos → Micrófono → <b>Permitir</b></li>
+      </ol>
+      <button id="btn-mic-retry" class="btn big">🔄 Reintentar</button>
+    </div>
+    <div class="state state-unsupported">
+      <p class="note">😕 Este navegador no entiende voz</p>
+      <p class="sub">Abre el juego en <b>Chrome</b> (Android).</p>
+    </div>
+    <button id="btn-no-mic" class="btn link" hidden>Jugar sin voz</button>
+  </section>
+
+  <!-- Jugadores y ajustes -->
+  <section id="screen-setup" class="screen">
+    <header class="brand"><span class="logo" aria-hidden="true">🎤</span><h1>Caricachupas</h1></header>
+
+    <div id="player-list" class="players"></div>
     <form id="player-form" autocomplete="off">
-      <input id="player-name" type="text" placeholder="Nombre del jugador" maxlength="20">
-      <button type="submit" class="btn small">Añadir</button>
+      <input id="player-name" type="text" placeholder="Nombre del jugador" maxlength="16" enterkeyhint="done">
+      <button type="submit" class="btn icon" aria-label="Añadir jugador">＋</button>
     </form>
-    <ul id="player-list"></ul>
 
-    <h2>Ajustes</h2>
-    <label class="row">Dificultad
-      <select id="difficulty">
-        <option value="facil">Fácil: temas populares, letras comunes</option>
-        <option value="medio">Medio: más temas, letras variadas</option>
-        <option value="dificil">Difícil: temas exigentes, letras raras</option>
-        <option value="extremo">Extremo: letras rarísimas, poco tiempo</option>
-      </select>
-    </label>
-    <label class="row">Cambiar de tema después de
-      <select id="laps">
-        <option value="0">Hasta que alguien falle</option>
-        <option value="1">1 vuelta (todos responden 1 vez)</option>
-        <option value="2">2 vueltas</option>
-        <option value="3">3 vueltas</option>
-        <option value="5">5 vueltas</option>
-      </select>
-    </label>
-    <label class="row">Tiempo por turno: <b id="seconds-label">5</b> s
-      <input id="seconds" type="range" min="3" max="10" value="5">
-    </label>
-    <label class="row">Al fallar
-      <select id="mode">
-        <option value="eliminar">Se elimina al jugador</option>
-        <option value="castigo">Recibe un castigo (nadie sale)</option>
-      </select>
-    </label>
-    <label class="row">Acento de voz
-      <select id="lang">
-        <option value="es-MX">México</option>
-        <option value="es-US">Estados Unidos</option>
-        <option value="es-CO">Colombia</option>
-        <option value="es-AR">Argentina</option>
-        <option value="es-CL">Chile</option>
-        <option value="es-PE">Perú</option>
-        <option value="es-ES">España</option>
-      </select>
-    </label>
-    <label class="row check"><input id="voice" type="checkbox" checked> El juego anuncia el tema en voz alta</label>
-
-    <p id="mic-warning" class="warn" hidden>
-      Este navegador no soporta reconocimiento de voz. Usa Chrome en Android. Mientras tanto, los botones ✔ / ✘ hacen de juez.
-    </p>
-    <button id="btn-play" class="btn big" disabled>¡A jugar!</button>
-
-    <details id="rejected-box" class="rejected" hidden>
-      <summary>Palabras que no reconocí (<span id="rejected-count">0</span>)</summary>
-      <p class="sub">Si alguna era correcta, mándamela para agregarla a la lista del tema.</p>
-      <ul id="rejected-list"></ul>
-      <div class="manual">
-        <button id="rejected-copy" type="button" class="btn small">Copiar</button>
-        <button id="rejected-clear" type="button" class="btn small bad">Borrar</button>
+    <div class="field">
+      <span class="flabel">Dificultad</span>
+      <div class="seg" id="seg-difficulty" role="radiogroup" aria-label="Dificultad">
+        <button type="button" data-value="facil" role="radio">😀<small>Fácil</small></button>
+        <button type="button" data-value="medio" role="radio">🙂<small>Medio</small></button>
+        <button type="button" data-value="dificil" role="radio">😬<small>Difícil</small></button>
+        <button type="button" data-value="extremo" role="radio">🔥<small>Extremo</small></button>
       </div>
+    </div>
+
+    <div class="field">
+      <span class="flabel">Vueltas por tema</span>
+      <div class="seg" id="seg-laps" role="radiogroup" aria-label="Vueltas por tema">
+        <button type="button" data-value="0" role="radio">♾️<small>Hasta fallar</small></button>
+        <button type="button" data-value="1" role="radio">1</button>
+        <button type="button" data-value="2" role="radio">2</button>
+        <button type="button" data-value="3" role="radio">3</button>
+        <button type="button" data-value="5" role="radio">5</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="flabel">Al fallar</span>
+      <div class="seg" id="seg-mode" role="radiogroup" aria-label="Al fallar">
+        <button type="button" data-value="eliminar" role="radio">☠️<small>Sale</small></button>
+        <button type="button" data-value="castigo" role="radio">😈<small>Castigo</small></button>
+      </div>
+    </div>
+
+    <label class="field time">
+      <span class="flabel">⏱️ Tiempo</span>
+      <input id="seconds" type="range" min="3" max="10" value="5" aria-label="Segundos por turno">
+      <b id="seconds-label">5 s</b>
+    </label>
+
+    <details class="more">
+      <summary>⚙️ Más ajustes</summary>
+      <label class="line">🗣️ Acento
+        <select id="lang">
+          <option value="es-MX">México</option>
+          <option value="es-US">Estados Unidos</option>
+          <option value="es-CO">Colombia</option>
+          <option value="es-AR">Argentina</option>
+          <option value="es-CL">Chile</option>
+          <option value="es-PE">Perú</option>
+          <option value="es-ES">España</option>
+        </select>
+      </label>
+      <label class="line check"><input id="voice" type="checkbox"> 📢 Anunciar el tema en voz alta</label>
+      <label class="line check"><input id="sound" type="checkbox"> 👏 Aplausos y sonidos</label>
+
+      <div id="rejected-box" class="rejected" hidden>
+        <p class="sub">🧐 Palabras que no reconocí (<span id="rejected-count">0</span>)</p>
+        <ul id="rejected-list"></ul>
+        <div class="row-btns">
+          <button id="rejected-copy" type="button" class="btn small">Copiar</button>
+          <button id="rejected-clear" type="button" class="btn small bad">Borrar</button>
+        </div>
+      </div>
+      <p class="legal">Los nombres de personajes, marcas, equipos y artistas son de sus dueños. Este juego no está
+        afiliado a ellos y solo usa texto.</p>
     </details>
 
-    <p class="legal">Los nombres de personajes, marcas, equipos y artistas son de sus respectivos dueños.
-      Este juego no está afiliado a ellos y solo usa texto, sin logotipos ni imágenes.</p>
+    <button id="btn-play" class="btn big sticky" disabled>▶ ¡Jugar!</button>
   </section>
 
   <!-- Anuncio del tema -->
-  <section id="screen-topic" class="screen">
-    <p class="sub">Ronda <span id="topic-round">1</span></p>
-    <p class="chacha">¡Caricachupas!</p>
-    <h1 id="topic-text"></h1>
-    <p class="sub">Empieza <b id="topic-player"></b></p>
-    <button id="btn-start-round" class="btn big">▶ Empezar</button>
-    <button id="btn-quit-topic" class="btn link">Terminar juego</button>
+  <section id="screen-topic" class="screen center">
+    <p class="chip" id="topic-round"></p>
+    <div class="big-emoji" id="topic-emoji" aria-hidden="true"></div>
+    <h1 id="topic-name" class="topic-name"></h1>
+    <div class="letter" id="topic-letter" aria-label="Letra"></div>
+    <div class="who"><span id="topic-avatar" class="avatar"></span><b id="topic-player"></b></div>
+    <button id="btn-start-round" class="btn big">▶ ¡Empezar!</button>
+    <button id="btn-quit-topic" class="btn link">Salir</button>
   </section>
 
   <!-- Turno -->
-  <section id="screen-turn" class="screen">
-    <div class="topbar"><span id="turn-topic"></span></div>
-    <h2 id="turn-player" class="player"></h2>
-    <div id="turn-clock" class="clock">5</div>
-    <div class="bar"><div id="turn-bar"></div></div>
-    <p id="turn-heard" class="heard">🎙️ Escuchando…</p>
-    <p id="turn-used" class="used"></p>
-    <div id="manual-judge" class="manual" hidden>
-      <button id="btn-ok" class="btn good small">✔ Dijo bien</button>
-      <button id="btn-bad" class="btn bad small">✘ Falló</button>
+  <section id="screen-turn" class="screen turn">
+    <div class="turn-top">
+      <span class="chip"><span id="turn-emoji" aria-hidden="true"></span> <span id="turn-topic"></span></span>
+      <span id="turn-lap" class="chip" hidden></span>
+    </div>
+    <div class="who big"><span id="turn-avatar" class="avatar big"></span><h2 id="turn-player"></h2></div>
+
+    <div class="ring" id="turn-ring">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+        <circle class="ring-fg" id="ring-fg" cx="60" cy="60" r="52"></circle>
+      </svg>
+      <div class="ring-center">
+        <div id="turn-clock" class="clock" role="timer" aria-live="off">5</div>
+        <div id="turn-letter" class="ring-letter"></div>
+      </div>
+    </div>
+
+    <p id="turn-heard" class="heard"></p>
+    <div id="turn-used" class="used-chips"></div>
+
+    <div id="manual-judge" class="row-btns" hidden>
+      <button id="btn-ok" class="btn good">✔</button>
+      <button id="btn-bad" class="btn bad">✘</button>
     </div>
   </section>
 
   <!-- Fin de ronda -->
-  <section id="screen-round-end" class="screen">
-    <p id="end-title" class="chacha">💥 ¡Se acabó!</p>
-    <h1 id="end-player"></h1>
+  <section id="screen-round-end" class="screen center">
+    <div class="big-emoji" id="end-emoji" aria-hidden="true">😢</div>
+    <h1 id="end-title"></h1>
+    <div class="who"><span id="end-avatar" class="avatar"></span><b id="end-player"></b></div>
     <p id="end-heard" class="heard-small" hidden></p>
     <p id="end-reason" class="reason"></p>
     <p id="end-punishment" class="punishment" hidden></p>
-    <button id="btn-next-round" class="btn big">Siguiente ronda</button>
-    <button id="btn-quit-end" class="btn link">Terminar juego</button>
+    <button id="btn-next-round" class="btn big">Siguiente tema ▶</button>
+    <button id="btn-quit-end" class="btn link">Salir</button>
   </section>
 
   <!-- Ganador -->
-  <section id="screen-winner" class="screen">
-    <p class="chacha">🏆</p>
-    <h1 id="winner-name"></h1>
-    <p class="sub">¡Ganó el juego!</p>
-    <button id="btn-again" class="btn big">Jugar otra vez</button>
+  <section id="screen-winner" class="screen center">
+    <div class="big-emoji" aria-hidden="true">🏆</div>
+    <h1>¡Ganó!</h1>
+    <div class="who big"><span id="winner-avatar" class="avatar big"></span><h2 id="winner-name"></h2></div>
+    <button id="btn-again" class="btn big">🔁 Otra vez</button>
     <button id="btn-quit-winner" class="btn link">Cambiar jugadores</button>
   </section>
 
   <div id="toast" class="toast" hidden></div>
+  <div id="fx" aria-hidden="true"></div>
 </main>
 
 <script src="data.js"></script>
 <script src="logic.js"></script>
+<script src="sfx.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
