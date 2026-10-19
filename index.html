@@ -47,6 +47,15 @@
     </form>
 
     <div class="field">
+      <div class="seg two" id="seg-teams" role="radiogroup" aria-label="Individual o por equipos">
+        <button type="button" data-value="solo" role="radio">👤<small>Individual</small></button>
+        <button type="button" data-value="teams" role="radio">👥<small>Equipos</small></button>
+      </div>
+      <p id="teams-hint" class="auto-note" hidden>Toca a un jugador para cambiarlo de equipo
+        <button id="btn-shuffle-teams" type="button" class="btn small">🎲 Mezclar</button></p>
+    </div>
+
+    <div class="field">
       <div class="seg two" id="seg-auto" role="radiogroup" aria-label="Modo de juego">
         <button type="button" data-value="auto" role="radio">🎲<small>Automático</small></button>
         <button type="button" data-value="manual" role="radio">🎛️<small>Manual</small></button>
@@ -79,7 +88,7 @@
       <div class="field">
         <span class="flabel">Al fallar</span>
         <div class="seg" id="seg-mode" role="radiogroup" aria-label="Al fallar">
-          <button type="button" data-value="eliminar" role="radio">☠️<small>Sale</small></button>
+          <button type="button" data-value="eliminar" role="radio">☠️<small id="lbl-sale">Sale</small></button>
           <button type="button" data-value="castigo" role="radio">😈<small>Castigo</small></button>
         </div>
       </div>
@@ -132,6 +141,13 @@
     <button id="btn-play" class="btn big sticky" disabled>🎰 ¡Girar ruleta!</button>
   </section>
 
+  <!-- Equipos -->
+  <section id="screen-teams" class="screen center">
+    <h1>👥 Los equipos</h1>
+    <div id="team-cards" class="team-cards"></div>
+    <button id="btn-teams-go" class="btn big">▶ ¡Vamos!</button>
+  </section>
+
   <!-- Ruleta -->
   <section id="screen-wheel" class="screen center">
     <h1 id="wheel-title" class="wheel-title"></h1>
@@ -162,7 +178,7 @@
       <span id="turn-reto" class="chip reto-chip" hidden></span>
     </div>
     <div class="who big"><span id="turn-avatar" class="avatar big"></span><h2 id="turn-player"></h2></div>
-    <div class="turn-stats"><span id="turn-score" class="chip">⭐ 0</span><span id="turn-streak" class="chip hot" hidden></span></div>
+    <div class="turn-stats"><span id="turn-team" class="chip team-chip" hidden></span><span id="turn-score" class="chip">⭐ 0</span><span id="turn-streak" class="chip hot" hidden></span></div>
 
     <div class="ring" id="turn-ring">
       <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -197,6 +213,7 @@
     <p id="end-heard" class="heard-small" hidden></p>
     <p id="end-reason" class="reason"></p>
     <p id="end-punishment" class="punishment" hidden></p>
+    <ol id="end-teams" class="scores teams-scores" hidden></ol>
     <ol id="end-scores" class="scores"></ol>
     <button id="btn-next-round" class="btn big">Siguiente tema ▶</button>
     <div class="row-btns link-row">
@@ -210,6 +227,7 @@
     <div class="big-emoji" aria-hidden="true">🏆</div>
     <h1 id="results-title">¡Ganó!</h1>
     <div class="who big"><span id="winner-avatar" class="avatar big"></span><h2 id="winner-name"></h2></div>
+    <ol id="final-teams" class="scores teams-scores" hidden></ol>
     <ol id="final-scores" class="scores"></ol>
     <div id="awards" class="awards"></div>
     <button id="btn-again" class="btn big">🔁 Otra vez</button>

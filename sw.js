@@ -1,5 +1,5 @@
 // Caché mínima para que el juego abra sin conexión una vez cargado.
-const CACHE = 'caricachupas-v5';
+const CACHE = 'caricachupas-v6';
 const FILES = ['./', 'index.html', 'style.css', 'data.js', 'logic.js', 'sfx.js', 'wheel.js', 'app.js', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

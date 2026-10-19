@@ -13,13 +13,18 @@
   const NEXT_TURN_MS = 1100;   // deja que termine el aplauso antes de abrir el micrófono
   const RETO_CHANCE = 0.4;     // probabilidad de reto sorpresa por tema (desde el 2.º)
   const JOKER_SECONDS = 4;
+  const LIVES = 3;             // vidas por equipo en modo equipos + "pierde vida"
+  const TEAM_DEFS = [
+    { name: 'Rojo', emoji: '🔴', hue: 5 },
+    { name: 'Azul', emoji: '🔵', hue: 215 },
+  ];
   const REVEAL_MS = 1500;      // sin voz: tiempo que se ve el tema antes de arrancar el reloj
   const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------- estado ----------
   const state = {
     players: [],            // { name, alive, avatar, hue }
-    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, customPunishments: [] },
+    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, teams: false, customPunishments: [] },
     micOk: false,           // false = se juega sin voz (botones ✔ / ✘)
     round: 0,
     topic: null,            // { category, letter, index, used:Map(clave->palabra), turns }
@@ -28,6 +33,7 @@
     lastReto: null,
     dir: 1,                 // 1 = orden normal, -1 = al revés
     forceReto: null,        // solo para pruebas
+    teams: null,            // [{ name, emoji, hue, score, lives }] en modo equipos
     current: 0,
     turnOpen: false,
   };
@@ -38,7 +44,7 @@
     return p;
   }
   function decorate(name, i) {
-    return resetStats({ name, avatar: AVATARS[i % AVATARS.length], hue: (i * 47 + 250) % 360 });
+    return resetStats({ name, avatar: AVATARS[i % AVATARS.length], hue: (i * 47 + 250) % 360, team: i % 2 });
   }
   function save() {
     try {
@@ -96,7 +102,11 @@
   function setAvatar(el, p) {
     el.textContent = p.avatar;
     el.style.setProperty('--hue', p.hue);
+    const ringed = state.settings.teams && p.team != null;
+    el.classList.toggle('team-ring', !!ringed);
+    if (ringed) el.style.setProperty('--ring', TEAM_DEFS[p.team].hue);
   }
+  const hearts = (t) => '❤️'.repeat(Math.max(0, t.lives)) + '🖤'.repeat(Math.max(0, LIVES - t.lives));
 
   function confetti(count) {
     if (REDUCED) return;
@@ -211,7 +221,11 @@
     }
     state.players.forEach((pl, i) => {
       const chip = document.createElement('div');
-      chip.className = 'player-chip';
+      chip.className = 'player-chip' + (state.settings.teams ? ' t' + pl.team : '');
+      if (state.settings.teams) {
+        chip.title = 'Tocar para cambiar de equipo';
+        chip.onclick = () => { pl.team = 1 - pl.team; renderPlayers(); };
+      }
       const av = document.createElement('span');
       av.className = 'avatar';
       setAvatar(av, pl);
@@ -221,9 +235,10 @@
       rm.type = 'button';
       rm.textContent = '✕';
       rm.setAttribute('aria-label', 'Quitar ' + pl.name);
-      rm.onclick = () => {
+      rm.onclick = (ev) => {
+        ev.stopPropagation();
         state.players.splice(i, 1);
-        state.players = state.players.map((p, k) => decorate(p.name, k));
+        state.players.forEach((p, k) => { p.avatar = AVATARS[k % AVATARS.length]; p.hue = (k * 47 + 250) % 360; });
         save(); renderPlayers();
       };
       chip.append(av, name, rm);
@@ -250,8 +265,15 @@
     $('seconds-label').textContent = n + ' s';
   }
 
+  function assignTeams(randomize) {
+    const idx = state.players.map((_, i) => i);
+    if (randomize) shuffle(idx);
+    idx.forEach((pi, k) => { state.players[pi].team = k % 2; });
+  }
   function applyMode() {
     const auto = state.settings.auto;
+    $('teams-hint').hidden = !state.settings.teams;
+    $('lbl-sale').textContent = state.settings.teams ? 'Vidas' : 'Sale';
     $('manual-settings').hidden = auto;
     $('auto-note').hidden = !auto;
     $('btn-play').textContent = auto ? '🎰 ¡Girar ruleta!' : '▶ ¡Jugar!';
@@ -289,6 +311,11 @@
       state.settings.auto = v === 'auto';
       applyMode(); save();
     });
+    bindSeg('seg-teams', () => (state.settings.teams ? 'teams' : 'solo'), (v) => {
+      state.settings.teams = v === 'teams';
+      applyMode(); renderPlayers(); save();
+    });
+    $('btn-shuffle-teams').onclick = () => { assignTeams(true); renderPlayers(); Sfx.click(); };
     applyMode();
     bindSeg('seg-difficulty', () => state.settings.difficulty, (v) => {
       state.settings.difficulty = v;
@@ -303,7 +330,10 @@
       const input = $('player-name');
       const name = input.value.trim();
       if (!name || state.players.length >= 12) return;
-      state.players.push(decorate(name, state.players.length));
+      const added = decorate(name, state.players.length);
+      // El jugador nuevo entra al equipo con menos gente.
+      added.team = state.players.filter((q) => q.team === 0).length <= state.players.filter((q) => q.team === 1).length ? 0 : 1;
+      state.players.push(added);
       input.value = '';
       save(); renderPlayers();
     };
@@ -351,6 +381,44 @@
   }
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  function interleave(players) {
+    const t = [[], []];
+    players.forEach((p) => t[p.team].push(p));
+    shuffle(t[0]); shuffle(t[1]);
+    const first = Math.random() < 0.5 ? 0 : 1;
+    const a = t[first], b = t[1 - first], out = [];
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      if (a[i]) out.push(a[i]);
+      if (b[i]) out.push(b[i]);
+    }
+    return out;
+  }
+
+  // Presenta los equipos y espera un toque.
+  async function showTeams() {
+    const box = $('team-cards');
+    box.innerHTML = '';
+    state.teams.forEach((tm, ti) => {
+      const card = document.createElement('div');
+      card.className = 'team-card';
+      card.style.setProperty('--hue', tm.hue);
+      const em = document.createElement('div'); em.className = 'big'; em.textContent = tm.emoji;
+      const h = document.createElement('h2'); h.textContent = 'Equipo ' + tm.name;
+      card.append(em, h);
+      state.players.filter((p) => p.team === ti).forEach((p) => {
+        const m = document.createElement('div'); m.className = 'member';
+        const av = document.createElement('span'); av.className = 'avatar'; setAvatar(av, p);
+        const nm = document.createElement('span'); nm.textContent = p.name;
+        m.append(av, nm);
+        card.appendChild(m);
+      });
+      box.appendChild(card);
+    });
+    show('teams');
+    Sfx.ding();
+    await new Promise((res) => { $('btn-teams-go').onclick = res; });
+  }
+
   // Muestra una ruleta, espera el giro y devuelve el índice ganador.
   async function runWheel({ title, items, tap, result }) {
     $('wheel-title').textContent = title;
@@ -379,8 +447,17 @@
     Sfx.unlock();
     state.players.forEach(resetStats);
     state.reto = null; state.lastReto = null; state.dir = 1;
-    shuffle(state.players);               // el orden de turnos también es aleatorio
     state.round = 0;
+    if (state.settings.teams) {
+      // Equipos: turnos alternados rojo-azul-rojo-azul...
+      if (!state.players.some((p) => p.team === 0) || !state.players.some((p) => p.team === 1)) assignTeams(true);
+      state.teams = TEAM_DEFS.map((d) => ({ ...d, score: 0, lives: LIVES }));
+      state.players = interleave(state.players);
+      await showTeams();
+    } else {
+      state.teams = null;
+      shuffle(state.players);             // el orden de turnos también es aleatorio
+    }
 
     if (state.settings.auto) {
       const keys = Object.keys(DIFFICULTIES);
@@ -534,6 +611,13 @@
   }
 
   function renderTurnStats(player) {
+    const tm = state.settings.teams && state.teams ? state.teams[player.team] : null;
+    $('turn-score').hidden = !!tm;
+    $('turn-team').hidden = !tm;
+    if (tm) {
+      $('turn-team').style.setProperty('--hue', tm.hue);
+      $('turn-team').textContent = `${tm.emoji} ${tm.name} · ⭐ ${tm.score}` + (state.settings.mode === 'eliminar' ? ' · ' + hearts(tm) : '');
+    }
     $('turn-score').textContent = '⭐ ' + player.score;
     const st = $('turn-streak');
     st.hidden = player.streak < 2;
@@ -689,6 +773,7 @@
     if (pl.fastest == null || elapsed < pl.fastest) pl.fastest = elapsed;
     const pts = scoreFor({ fracLeft: left / total, streak: pl.streak, mult: state.reto && state.reto.mult });
     pl.score += pts;
+    if (state.teams) state.teams[pl.team].score += pts;
 
     // ¡Aplausos!
     Sfx.clap(); buzz(40);
@@ -716,6 +801,25 @@
   function timeUp() { failTurn('¡Se acabó el tiempo!', ''); }
 
   // ---------- marcador ----------
+  function renderTeamScores(ol) {
+    ol.hidden = !state.teams;
+    ol.innerHTML = '';
+    if (!state.teams) return;
+    state.teams.slice().sort((a, b) => b.score - a.score).forEach((t) => {
+      const li = document.createElement('li');
+      li.style.setProperty('--hue', t.hue);
+      const em = document.createElement('span'); em.className = 'rank'; em.textContent = t.emoji;
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = 'Equipo ' + t.name;
+      const pts = document.createElement('span'); pts.className = 'pts'; pts.textContent = t.score + ' pts';
+      li.append(em, nm);
+      if (state.settings.mode === 'eliminar') {
+        const hh = document.createElement('span'); hh.className = 'hearts'; hh.textContent = hearts(t);
+        li.appendChild(hh);
+      }
+      li.appendChild(pts);
+      ol.appendChild(li);
+    });
+  }
   function renderScores(ol, { skipOut = false } = {}) {
     ol.innerHTML = '';
     const rows = state.players.map((p, i) => ({ p, i })).sort((a, b) => b.p.score - a.p.score);
@@ -743,23 +847,28 @@
   function endRound(reason, heard) {
     const player = state.players[state.current];
     const eliminate = state.settings.mode === 'eliminar';
-    if (eliminate) player.alive = false;
+    const team = state.teams ? state.teams[player.team] : null;
+    if (eliminate && !team) player.alive = false;
+    if (eliminate && team) team.lives -= 1;      // en equipos se pierde una vida, no el jugador
 
     $('end-emoji').textContent = '😢';
-    $('end-title').textContent = eliminate ? '¡Eliminado!' : '¡Fallaste!';
+    $('end-title').textContent = team
+      ? `¡Falló ${team.emoji} ${team.name}!`
+      : (eliminate ? '¡Eliminado!' : '¡Fallaste!');
     setAvatar($('end-avatar'), player);
     $('end-player').textContent = player.name;
     const said = $('end-heard');
     said.hidden = !heard;
     said.textContent = heard ? `Dijo: “${heard}”` : '';
-    $('end-reason').textContent = reason;
+    $('end-reason').textContent = reason + (team && eliminate ? ` · Vidas ${hearts(team)}` : '');
     const pun = $('end-punishment');
     pun.hidden = true;
     renderScores($('end-scores'));
+    renderTeamScores($('end-teams'));
 
     const btn = $('btn-next-round');
     if (eliminate) {
-      const last = alive().length <= 1;
+      const last = team ? state.teams.some((t) => t.lives <= 0) : alive().length <= 1;
       btn.textContent = last ? 'Ver ganador 🏆' : 'Siguiente tema ▶';
       btn.onclick = last ? showResults : () => newRound();
     } else {
@@ -768,7 +877,7 @@
       btn.onclick = async () => {
         const pool = shuffle(allPunishments().slice()).slice(0, 8);
         const idx = await runWheel({
-          title: `😈 Castigo para ${player.name}`,
+          title: `😈 Castigo para ${team ? team.emoji + ' ' : ''}${player.name}`,
           items: pool.map((x) => ({ emoji: x.emoji })),
           tap: false,
           result: (i) => `${pool[i].emoji} ${pool[i].text}`,
@@ -797,6 +906,7 @@
     $('end-reason').textContent = `${laps} ${laps === 1 ? 'vuelta' : 'vueltas'} en ${state.topic.category.name}`;
     $('end-punishment').hidden = true;
     renderScores($('end-scores'));
+    renderTeamScores($('end-teams'));
     $('btn-next-round').textContent = 'Siguiente tema ▶';
     $('btn-next-round').onclick = () => newRound();
     show('round-end');
@@ -825,9 +935,23 @@
     const left = alive();
     const bySurvival = eliminate && left.length === 1;
     const champ = bySurvival ? left[0].p : state.players.slice().sort((a, b) => b.score - a.score)[0];
-    $('results-title').textContent = bySurvival ? '¡Ganó!' : '🏁 Resultados';
-    if (champ) setAvatar($('winner-avatar'), champ);
-    $('winner-name').textContent = champ ? champ.name : '¡Nadie!';
+    if (state.teams) {
+      const [ta, tb] = state.teams;
+      let win = null;
+      if (eliminate && (ta.lives <= 0 || tb.lives <= 0)) win = ta.lives <= 0 ? tb : ta;
+      else if (ta.score !== tb.score) win = ta.score > tb.score ? ta : tb;
+      $('results-title').textContent = win ? '¡Ganó el equipo!' : '🤝 ¡Empate!';
+      const wa = $('winner-avatar');
+      wa.textContent = win ? win.emoji : '🤝';
+      wa.classList.remove('team-ring');
+      wa.style.setProperty('--hue', win ? win.hue : 140);
+      $('winner-name').textContent = win ? 'Equipo ' + win.name : 'Empate';
+    } else {
+      $('results-title').textContent = bySurvival ? '¡Ganó!' : '🏁 Resultados';
+      if (champ) setAvatar($('winner-avatar'), champ);
+      $('winner-name').textContent = champ ? champ.name : '¡Nadie!';
+    }
+    renderTeamScores($('final-teams'));
     renderScores($('final-scores'));
     const box = $('awards');
     box.innerHTML = '';

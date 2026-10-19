@@ -18,6 +18,13 @@ Es una PWA sin dependencias: HTML + JS puro.
 - **Castigos con ruleta:** en modo castigo gira una ruleta de 8 castigos al azar; puedes añadir los tuyos en "Más ajustes".
 - **Resultados:** marcador, campeón y premios (⚡ más rápido, 🔥 mejor racha, 🧠 más aciertos, 😅 más fallas).
 
+## Modo equipos
+- 👥 **Equipos** (junto a "Individual"): dos equipos, 🔴 Rojo y 🔵 Azul. Se reparten al azar y equilibrados; toca a un
+  jugador para cambiarlo de equipo o usa 🎲 Mezclar.
+- Los turnos se alternan entre equipos. Los puntos de cada acierto suman al equipo.
+- Al fallar: con **Vidas** el equipo pierde ❤️ (3 por equipo) y gana el otro al quedarse sin vidas; con **Castigo**
+  gira la ruleta y se decide por puntos al ver los resultados.
+
 ## Experiencia
 - Al abrir la app pide el micrófono antes de nada. Si ya estaba permitido, entra directo; si está bloqueado,
   muestra cómo activarlo y deja reintentar o jugar sin voz (con botones ✔ / ✘).
