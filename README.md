@@ -52,6 +52,10 @@ Las respuestas llegan a una hoja de cálculo. Mientras no esté configurado, la 
 `privacidad.html` es un **borrador** de política de privacidad (Google Play exige un enlace público): completa los datos
 entre corchetes antes de usarla.
 
+## App Android y Google Play
+Hay una versión Android (Capacitor) con voz nativa y anuncios (AdMob). Guía completa en **[ANDROID.md](ANDROID.md)**.
+Los materiales de la ficha (ícono, gráfico, capturas y textos) están en `store/`. `npm test` corre las pruebas.
+
 ## Experiencia
 - Al abrir la app pide el micrófono antes de nada. Si ya estaba permitido, entra directo; si está bloqueado,
   muestra cómo activarlo y deja reintentar o jugar sin voz (con botones ✔ / ✘).

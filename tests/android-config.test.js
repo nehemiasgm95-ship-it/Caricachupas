@@ -63,3 +63,29 @@ for (const pat of ['*.jks', '*.keystore', 'keystore.properties', 'node_modules/'
 // 6) íconos en todas las densidades
 for (const d of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) for (const n of ['ic_launcher', 'ic_launcher_round', 'ic_launcher_foreground']) assert(fs.existsSync(A(`app/src/main/res/mipmap-${d}/${n}.png`)), `ícono ${n} ${d}`);
 console.log('android-config OK (', xmls.length, 'XML revisados )');
+
+// 7) set-app-id cambia todo de forma coherente (se prueba en una copia temporal)
+{
+  const os = require('os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-appid-'));
+  const copy = (rel) => { fs.mkdirSync(path.dirname(path.join(tmp, rel)), { recursive: true }); fs.copyFileSync(path.join(root, rel), path.join(tmp, rel)); };
+  const oldId = cap.appId;
+  ['capacitor.config.json', 'android/app/build.gradle', 'android/app/src/main/res/values/strings.xml',
+    `android/app/src/main/java/${oldId.replace(/\./g, '/')}/MainActivity.java`].forEach(copy);
+  fs.mkdirSync(path.join(tmp, 'scripts')); fs.copyFileSync(path.join(root, 'scripts/set-app-id.js'), path.join(tmp, 'scripts/set-app-id.js'));
+  execFileSync('node', [path.join(tmp, 'scripts/set-app-id.js'), 'io.prueba.mijuego'], { stdio: 'pipe' });
+  const nc = JSON.parse(fs.readFileSync(path.join(tmp, 'capacitor.config.json'), 'utf8'));
+  assert.equal(nc.appId, 'io.prueba.mijuego');
+  const g = fs.readFileSync(path.join(tmp, 'android/app/build.gradle'), 'utf8');
+  assert(g.includes('applicationId "io.prueba.mijuego"') && g.includes('namespace = "io.prueba.mijuego"') && !g.includes(oldId));
+  assert(fs.readFileSync(path.join(tmp, 'android/app/src/main/res/values/strings.xml'), 'utf8').includes('io.prueba.mijuego'));
+  const act = path.join(tmp, 'android/app/src/main/java/io/prueba/mijuego/MainActivity.java');
+  assert(fs.existsSync(act) && /package io\.prueba\.mijuego;/.test(fs.readFileSync(act, 'utf8')));
+  assert(!fs.existsSync(path.join(tmp, 'android/app/src/main/java/com')), 'sin carpetas viejas');
+  // nombres inválidos se rechazan
+  for (const bad of ['Caricachupas', 'com.Mayus.app', 'com..x', '1com.app']) {
+    let failed = false; try { execFileSync('node', [path.join(tmp, 'scripts/set-app-id.js'), bad], { stdio: 'pipe' }); } catch (_) { failed = true; }
+    assert(failed, 'rechaza ' + bad);
+  }
+}
+console.log('set-app-id OK');
