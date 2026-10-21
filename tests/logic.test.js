@@ -68,3 +68,37 @@ assert.equal(L.scoreFor({ fracLeft: 1, streak: 99, mult: 1 }), 27);  // racha to
 assert.equal(L.scoreFor({ fracLeft: 1, streak: 1, mult: 2 }), 30);  // doble puntos
 assert(D.PUNISHMENTS.every((p) => p.emoji && p.text));
 console.log('retos y puntos OK');
+
+// ---- temas libres (sin letra) y progresión de dificultad
+{
+  const idxA = L.buildIndex(cat('selecciones').list);
+  const free = (t) => L.evaluate({ text: t, letter: null, index: idxA, used: new Map() });
+  assert.equal(free('Brasil').status, 'valid');                  // cualquier letra vale
+  assert.equal(free('senegal').status, 'valid');
+  assert.equal(free('el salvador').status, 'valid');
+  assert.equal(free('Marte').status, 'invalid');
+  assert.equal(free('Marte').code, 'unknown');
+  assert.doesNotMatch(free('Marte').reason, /empieza con/);       // sin regla de letra no se habla de letras
+  const used = new Map([[L.canonical('brasil'), 'brasil']]);
+  assert.equal(L.evaluate({ text: 'brasil', letter: null, index: idxA, used }).code, 'repeat');
+  // retos de largo con tema libre cuentan todas las palabras
+  assert(L.retoFeasible(D.RETOS.find((r) => r.id === 'larga'), idxA, null));
+
+  const st = (round, base = 'facil', progressive = true) => L.stageFor({ round, base, progressive, ...D.PROGRESSION });
+  assert.deepEqual([1, 2].map((r) => st(r).free), [true, true], 'las dos primeras rondas son libres');
+  assert.deepEqual([3, 4, 5, 6, 7, 8, 9, 10, 20].map((r) => st(r).diffKey),
+    ['facil', 'facil', 'medio', 'medio', 'dificil', 'dificil', 'extremo', 'extremo', 'extremo'], 'sube un nivel cada 2 temas');
+  assert.deepEqual([3, 5, 7, 9].map((r) => st(r).stepsUp), [0, 1, 2, 3]);
+  assert.equal(st(3).free, false);
+  assert.deepEqual([3, 5, 7, 9, 30].map((r) => st(r, 'dificil').diffKey), ['dificil', 'extremo', 'extremo', 'extremo', 'extremo'], 'desde difícil llega antes al tope');
+  assert.deepEqual([1, 5, 9].map((r) => st(r, 'extremo').stepsUp), [0, 0, 0], 'extremo ya está arriba');
+  assert.deepEqual([1, 2, 3, 9].map((r) => st(r, 'medio', false)), Array(4).fill({ free: false, diffKey: 'medio', stepsUp: 0 }), 'sin progresión: como antes');
+  // temas de arranque: generales y con listas amplias
+  const warm = D.CATEGORIES.filter((c) => c.warmup);
+  assert(warm.length >= 10 && warm.every((c) => c.level === 1 || ['selecciones'].includes(c.id)), 'temas de arranque: ' + warm.map((c) => c.id));
+  assert(warm.every((c) => c.list.length >= 30));
+  const names = D.CATEGORIES.map((c) => c.name);
+  for (const n of ['Selecciones de fútbol', 'Cosas que hay en la cocina', 'Cosas que puedes comprar en el supermercado', 'Animales de cuatro patas']) assert(names.includes(n), n);
+  assert(D.CATEGORIES.find((c) => c.id === 'cocina').warmup && D.CATEGORIES.find((c) => c.id === 'super').warmup && D.CATEGORIES.find((c) => c.id === 'selecciones').warmup);
+}
+console.log('temas libres y progresión OK');

@@ -120,7 +120,7 @@
   function evaluate({ text, letter, index, used }) {
     const spoken = clean(text);
     if (!spoken) return { status: 'invalid', code: 'empty', answer: '', key: '', reason: 'No se entendió nada' };
-    const L = letter ? letter.toLowerCase() : null;
+    const L = letter ? letter.toLowerCase() : null;     // sin letra = tema libre: vale cualquiera
     const letterOk = (e) => !L || e.initial === L;
     const any = () => true;
 
@@ -139,7 +139,8 @@
       if (wrong) {
         return {
           status: 'invalid', code: 'letter', answer: wrong.display, key: '',
-          reason: `"${wrong.display}" empieza con ${wrong.initial.toUpperCase()}, no con ${letter.toUpperCase()}`,
+          reason: L ? `"${wrong.display}" empieza con ${wrong.initial.toUpperCase()}, no con ${letter.toUpperCase()}`
+            : `"${wrong.display}" no es válida`,
         };
       }
     }
@@ -180,8 +181,8 @@
   // ¿Hay suficientes palabras en la lista con esa letra para que el reto sea jugable?
   function retoFeasible(reto, index, letter, minWords = 3) {
     if (!reto.min && !reto.max) return true;
-    const L = letter.toLowerCase();
-    return index.entries.filter((e) => e.initial === L && meetsReto(e.key, reto)).length >= minWords;
+    const L = letter ? letter.toLowerCase() : null;     // tema libre: cuentan todas las palabras
+    return index.entries.filter((e) => (!L || e.initial === L) && meetsReto(e.key, reto)).length >= minWords;
   }
 
   // Puntos de un acierto: base + rapidez (0 a 5) + racha (3 por acierto seguido, máx 12), por el multiplicador.
@@ -191,8 +192,21 @@
     return (10 + speed + combo) * (mult || 1);
   }
 
+  /**
+   * Etapa de un tema según el número de ronda. La partida empieza con temas LIBRES (sin letra, vale cualquier
+   * palabra del tema) y luego sube de dificultad poco a poco: cada `stepEvery` temas pasa al siguiente nivel.
+   */
+  function stageFor({ round, base, progressive, freeRounds = 2, stepEvery = 2, order = ['facil', 'medio', 'dificil', 'extremo'] }) {
+    const baseIdx = Math.max(0, order.indexOf(base));
+    if (!progressive) return { free: false, diffKey: order[baseIdx], stepsUp: 0 };
+    if (round <= freeRounds) return { free: true, diffKey: order[baseIdx], stepsUp: 0 };
+    const up = Math.floor((round - freeRounds - 1) / stepEvery);
+    const idx = Math.min(order.length - 1, baseIdx + up);
+    return { free: false, diffKey: order[idx], stepsUp: idx - baseIdx };
+  }
+
   const api = {
-    meetsReto, retoFeasible, scoreFor,
+    stageFor, meetsReto, retoFeasible, scoreFor,
     normalize, clean, canonical, phonetic, distance,
     buildIndex, evaluate, rankedLetters, lettersForRange,
   };

@@ -239,3 +239,24 @@ input[type=text]:focus, select:focus { outline: none; border-color: var(--accent
 .legal a { color: var(--muted); }
 
 .btn.reward { background: linear-gradient(135deg, #7c4dff, #b388ff); color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.25); }
+
+/* ---------- Temas libres, pausa, continuar solo y reclamos ---------- */
+.free-note { margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--accent); background: var(--panel);
+  border-radius: 99px; padding: 10px 20px; }
+.pause-btn { position: absolute; top: max(8px, env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px)); right: 8px; z-index: 3;
+  width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--panel); color: var(--text); font-size: 1.3rem; cursor: pointer; }
+.screen.turn { position: relative; }
+.pause-overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 24px;
+  background: rgba(20, 10, 40, .88); backdrop-filter: blur(4px); }
+.pause-card { background: var(--bg2); border-radius: 22px; padding: 24px; width: min(100%, 360px); display: flex;
+  flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+.pause-card .btn { width: 100%; }
+.auto-next { background: none; border: 0; color: var(--muted); font-size: 1rem; padding: 6px 12px; cursor: pointer; }
+.btn.claim { background: #ff9f43; color: #2a1400; }
+.vote-title { font-size: 1.6rem; text-wrap: balance; }
+.vote-grid { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.voter { display: flex; align-items: center; gap: 10px; background: var(--bg2); border-radius: 14px; padding: 8px 12px; }
+.voter .nm { flex: 1; font-weight: 700; text-align: left; min-width: 0; overflow-wrap: anywhere; }
+.voter button { border: 2px solid transparent; background: var(--panel); border-radius: 12px; font-size: 1.4rem; padding: 6px 12px; cursor: pointer; }
+.voter button[aria-pressed="true"].yes { border-color: var(--good); background: #14532d; }
+.voter button[aria-pressed="true"].no { border-color: var(--bad); background: #5a1426; }

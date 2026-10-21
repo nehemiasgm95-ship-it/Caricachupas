@@ -409,7 +409,7 @@
     { id: 'disney', name: 'Personajes de Disney y Pixar', level: 1, list: DISNEY },
     { id: 'superheroes', name: 'Superhéroes y villanos', level: 1, list: SUPERHEROES },
     { id: 'cocina', name: 'Cosas que hay en la cocina', level: 1, list: COCINA },
-    { id: 'super', name: 'Cosas que compras en el súper', level: 1, list: SUPER },
+    { id: 'super', name: 'Cosas que puedes comprar en el supermercado', level: 1, list: SUPER },
     { id: 'bebidas', name: 'Bebidas', level: 1, list: BEBIDAS },
     { id: 'dulces', name: 'Dulces y botanas', level: 1, list: DULCES_BOTANAS },
     { id: 'transporte', name: 'Medios de transporte', level: 1, list: TRANSPORTE },
@@ -446,6 +446,14 @@
   };
   CATEGORIES.forEach((c) => { c.emoji = EMOJI[c.id] || '❓'; });
 
+  // Temas "de arranque": generales y fáciles de decir. La partida empieza con ellos y SIN letra
+  // ("Animales de cuatro patas", "Cosas que hay en la cocina", "Selecciones de fútbol"...).
+  const WARMUP = new Set([
+    'cuatro_patas', 'animales', 'frutas', 'colores', 'cuerpo', 'comida_mx', 'deportes', 'cocina', 'super',
+    'bebidas', 'dulces', 'transporte', 'ropa', 'escuela', 'selecciones', 'equipos',
+  ]);
+  CATEGORIES.forEach((c) => { c.warmup = WARMUP.has(c.id); });
+
   // Dificultad: qué temas (level) y qué letras entran, y el tiempo sugerido por turno.
   // letters: porción del ranking de letras (de la más fácil a la más rara) que se usa.
   const DIFFICULTIES = {
@@ -454,6 +462,9 @@
     dificil: { label: 'Difícil', levels: [2, 3],    letters: [0.5, 1],   seconds: 4 },
     extremo: { label: 'Extremo', levels: [2, 3],    letters: [0.8, 1],   seconds: 3 },
   };
+
+  // Progresión: las primeras `freeRounds` rondas son libres (sin letra) y luego sube un nivel cada `stepEvery` temas.
+  const PROGRESSION = { freeRounds: 2, stepEvery: 2, order: ['facil', 'medio', 'dificil', 'extremo'] };
 
   const PUNISHMENTS = [
     { emoji: '💧', text: 'Toma un vaso de agua de un solo trago' },
@@ -481,5 +492,5 @@
     { id: 'corta', emoji: '✂️', label: 'Palabras cortas', text: 'máximo 5 letras', max: 5 },
   ];
 
-  root.CCData = { LETTERS, CATEGORIES, DIFFICULTIES, PUNISHMENTS, RETOS };
+  root.CCData = { LETTERS, CATEGORIES, DIFFICULTIES, PUNISHMENTS, RETOS, PROGRESSION };
 })(typeof self !== 'undefined' ? self : this);

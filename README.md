@@ -18,6 +18,12 @@ Es una PWA sin dependencias: HTML + JS puro.
 - **Castigos con ruleta:** en modo castigo gira una ruleta de 8 castigos al azar; puedes añadir los tuyos en "Más ajustes".
 - **Resultados:** marcador, campeón y premios (⚡ más rápido, 🔥 mejor racha, 🧠 más aciertos, 😅 más fallas).
 
+## Dificultad progresiva, narrador y reclamos
+- **Calentamiento**: las primeras 2 rondas son temas muy generales **sin letra** (animales con cuatro patas, cosas de la cocina, selecciones de fútbol…). Después entra la letra y la dificultad sube cada 2 rondas (y el tiempo baja). Se apaga en Ajustes → "Dificultad progresiva".
+- **Narrador**: anuncia el tema, "La ronda finalizó. El eliminado es X. La ronda continúa." y al final "El ganador es X". La ronda siguiente arranca sola (toca la cuenta regresiva para detenerla).
+- **Reclamos**: si la app rechaza una respuesta que sí valía (p. ej. "Alex" con la A), el botón "Reclamar" abre una votación entre los demás jugadores; si la mayoría acepta, el jugador vuelve al juego y la palabra se aprende en este dispositivo.
+- **Pausa**: botón ⏸ durante el turno.
+
 ## Modo equipos
 - 👥 **Equipos** (junto a "Individual"): dos equipos, 🔴 Rojo y 🔵 Azul. Se reparten al azar y equilibrados; toca a un
   jugador para cambiarlo de equipo o usa 🎲 Mezclar.

@@ -121,7 +121,10 @@
           <option value="es-ES">España</option>
         </select>
       </label>
-      <label class="line check"><input id="voice" type="checkbox"> 📢 Anunciar el tema en voz alta</label>
+      <label class="line check"><input id="voice" type="checkbox"> 🎙️ Narrador: anuncia temas, eliminados y ganador</label>
+      <label class="line check"><input id="progressive" type="checkbox"> 📈 Dificultad creciente (empieza sin letra y va subiendo)</label>
+      <label class="line check"><input id="autonext" type="checkbox"> ⏭️ Continuar solo entre temas</label>
+      <label class="line check"><input id="claims" type="checkbox"> ✋ Permitir reclamos (los demás votan)</label>
       <label class="line check"><input id="sound" type="checkbox"> 👏 Aplausos y sonidos</label>
       <label class="line check"><input id="retos" type="checkbox"> ⚡ Retos sorpresa entre temas</label>
       <label class="line check"><input id="warmmic" type="checkbox"> 🎙️ Micrófono continuo por tema (prueba)</label>
@@ -137,6 +140,11 @@
           <button type="submit" class="btn small" aria-label="Añadir castigo">＋</button>
         </form>
         <ul id="pun-list" class="pun-list"></ul>
+      </div>
+
+      <div id="learned-box" class="rejected" hidden>
+        <p class="sub">🧠 Palabras que aprendió la app por reclamos aceptados (<span id="learned-count">0</span>)</p>
+        <div class="row-btns"><button id="learned-clear" type="button" class="btn small bad">Olvidar</button></div>
       </div>
 
       <div id="rejected-box" class="rejected" hidden>
@@ -190,7 +198,7 @@
       </label>
       <label id="fb-words-row" class="line check" hidden>
         <input id="fb-words" type="checkbox" checked>
-        <span>Incluir las <b id="fb-words-count">0</b> palabras que no reconocí (nos ayudan a ampliar las listas)</span>
+        <span>Incluir las <b id="fb-words-count">0</b> palabras que no reconocí o que el grupo aceptó en un reclamo (nos ayudan a ampliar las listas)</span>
       </label>
       <button id="fb-send" class="btn big" type="submit">📨 Enviar</button>
       <p class="legal">Solo enviamos lo que ves aquí, más la versión de la app. <a id="lnk-privacy-fb" href="privacidad.html" target="_blank" rel="noopener">Privacidad</a></p>
@@ -228,6 +236,16 @@
     <button id="btn-teams-go" class="btn big">▶ ¡Vamos!</button>
   </section>
 
+  <!-- Reclamo: los demás votan -->
+  <section id="screen-vote" class="screen center">
+    <div class="big-emoji" aria-hidden="true">✋</div>
+    <h1 id="vote-title" class="vote-title"></h1>
+    <p id="vote-sub" class="sub">Los demás jugadores votan: 👍 sí vale · 👎 no vale</p>
+    <div id="vote-grid" class="vote-grid"></div>
+    <p id="vote-tally" class="reason" aria-live="polite"></p>
+    <button id="btn-vote-cancel" class="btn link" type="button">Cancelar reclamo</button>
+  </section>
+
   <!-- Ruleta -->
   <section id="screen-wheel" class="screen center">
     <h1 id="wheel-title" class="wheel-title"></h1>
@@ -246,12 +264,14 @@
     <div class="big-emoji" id="topic-emoji" aria-hidden="true"></div>
     <h1 id="topic-name" class="topic-name"></h1>
     <div class="letter" id="topic-letter" aria-label="Letra"></div>
+    <p id="topic-free" class="free-note" hidden>🎯 Sin letra: vale cualquiera</p>
     <div class="who"><span id="topic-avatar" class="avatar"></span><b id="topic-player"></b></div>
     <p class="go" aria-hidden="true">⏱️ ¡Ya!</p>
   </section>
 
   <!-- Turno -->
   <section id="screen-turn" class="screen turn">
+    <button id="btn-pause" class="pause-btn" type="button" aria-label="Pausar">⏸</button>
     <div class="turn-top">
       <span class="chip"><span id="turn-emoji" aria-hidden="true"></span> <span id="turn-topic"></span></span>
       <span id="turn-lap" class="chip" hidden></span>
@@ -283,6 +303,16 @@
       <button id="btn-ok" class="btn good">✔</button>
       <button id="btn-bad" class="btn bad">✘</button>
     </div>
+
+    <div id="pause-overlay" class="pause-overlay" hidden role="dialog" aria-label="Juego en pausa">
+      <div class="pause-card">
+        <div class="big-emoji" aria-hidden="true">⏸</div>
+        <h2>En pausa</h2>
+        <button id="btn-resume" class="btn big" type="button">▶ Continuar</button>
+        <button id="btn-pause-end" class="btn" type="button">🏁 Terminar y ver resultados</button>
+        <button id="btn-pause-quit" class="btn link" type="button">Salir al inicio</button>
+      </div>
+    </div>
   </section>
 
   <!-- Fin de ronda -->
@@ -295,8 +325,10 @@
     <p id="end-punishment" class="punishment" hidden></p>
     <ol id="end-teams" class="scores teams-scores" hidden></ol>
     <ol id="end-scores" class="scores"></ol>
+    <button id="btn-claim" class="btn small claim" type="button" hidden>✋ Reclamar</button>
     <button id="btn-reward" class="btn small reward" type="button" hidden>🎁 Mira un anuncio: +1 comodín de tiempo para todos</button>
     <button id="btn-next-round" class="btn big">Siguiente tema ▶</button>
+    <button id="auto-next" class="auto-next" type="button" hidden></button>
     <div class="row-btns link-row">
       <button id="btn-results" class="btn link">🏁 Ver resultados</button>
       <button id="btn-quit-end" class="btn link">Salir</button>
