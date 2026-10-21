@@ -124,6 +124,7 @@
       <label class="line check"><input id="voice" type="checkbox"> 🎙️ Narrador: anuncia temas, eliminados y ganador</label>
       <label class="line check"><input id="progressive" type="checkbox"> 📈 Dificultad creciente (empieza sin letra y va subiendo)</label>
       <label class="line check"><input id="autonext" type="checkbox"> ⏭️ Continuar solo entre temas</label>
+      <label class="line check"><input id="speedup" type="checkbox"> ⚡ Acelerar rondas largas (−1 s cada 2 vueltas)</label>
       <label class="line check"><input id="claims" type="checkbox"> ✋ Permitir reclamos (los demás votan)</label>
       <label class="line check"><input id="sound" type="checkbox"> 👏 Aplausos y sonidos</label>
       <label class="line check"><input id="retos" type="checkbox"> ⚡ Retos sorpresa entre temas</label>
@@ -275,6 +276,8 @@
     <div class="turn-top">
       <span class="chip"><span id="turn-emoji" aria-hidden="true"></span> <span id="turn-topic"></span></span>
       <span id="turn-lap" class="chip" hidden></span>
+      <span id="turn-count" class="chip" hidden></span>
+      <span id="turn-fast" class="chip hot" hidden>⚡ Más rápido</span>
       <span id="turn-reto" class="chip reto-chip" hidden></span>
     </div>
     <div class="who big"><span id="turn-avatar" class="avatar big"></span><h2 id="turn-player"></h2></div>

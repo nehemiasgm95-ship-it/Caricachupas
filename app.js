@@ -16,6 +16,7 @@
   const STORE_KEY = 'caricachupas.v1';
   const REJECTED_KEY = 'caricachupas.rejected.v1';
   const LEARNED_KEY = 'caricachupas.learned.v1';
+  const RECORDS_KEY = 'caricachupas.records.v1';
   const CLAIMS_KEY = 'caricachupas.claims.v1';
   const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐯', '🐶', '🐱', '🐰', '🐨'];
   const RING_LEN = 2 * Math.PI * 52;
@@ -33,7 +34,7 @@
   // ---------- estado ----------
   const state = {
     players: [],            // { name, alive, avatar, hue }
-    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, teams: false, warmMic: false, progressive: true, autoNext: true, claims: true, customPunishments: [] },
+    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, teams: false, warmMic: false, progressive: true, autoNext: true, claims: true, speedup: true, customPunishments: [] },
     micOk: false,           // false = se juega sin voz (botones ✔ / ✘)
     round: 0,
     topic: null,            // { category, letter, index, used:Map(clave->palabra), turns }
@@ -97,6 +98,16 @@
   // Palabras que el grupo aceptó: la app las recuerda en este teléfono y ya no las vuelve a rechazar.
   function loadLearned() { try { state.learned = JSON.parse(localStorage.getItem(LEARNED_KEY) || '{}') || {}; } catch (_) { state.learned = {}; } }
   function saveLearned() { try { localStorage.setItem(LEARNED_KEY, JSON.stringify(state.learned)); } catch (_) { /* sin almacenamiento */ } }
+  const loadRecords = () => { try { return JSON.parse(localStorage.getItem(RECORDS_KEY) || '{}') || {}; } catch (_) { return {}; } };
+  const recordOf = (catId) => +loadRecords()[catId] || 0;
+  // Guarda el récord de palabras seguidas de un tema; devuelve true si se rompió (había uno previo).
+  function saveRecord(catId, n) {
+    const r = loadRecords(); const prev = +r[catId] || 0;
+    if (n <= prev) return false;
+    r[catId] = n;
+    try { localStorage.setItem(RECORDS_KEY, JSON.stringify(r)); } catch (_) { /* sin almacenamiento */ }
+    return prev > 0;
+  }
   const learnedCount = () => Object.values(state.learned).reduce((n, a) => n + a.length, 0);
   function renderLearned() {
     const n = learnedCount();
@@ -347,6 +358,7 @@
     $('warmmic').checked = state.settings.warmMic;
     $('progressive').checked = state.settings.progressive;
     $('autonext').checked = state.settings.autoNext;
+    $('speedup').checked = state.settings.speedup;
     $('claims').checked = state.settings.claims;
     renderPunishments();
     Sfx.setEnabled(state.settings.sound);
@@ -387,6 +399,7 @@
     $('sound').onchange = (e) => { state.settings.sound = e.target.checked; Sfx.setEnabled(e.target.checked); save(); };
     $('retos').onchange = (e) => { state.settings.retos = e.target.checked; save(); };
     $('progressive').onchange = (e) => { state.settings.progressive = e.target.checked; save(); };
+    $('speedup').onchange = (e) => { state.settings.speedup = e.target.checked; save(); };
     $('autonext').onchange = (e) => { state.settings.autoNext = e.target.checked; save(); };
     $('claims').onchange = (e) => { state.settings.claims = e.target.checked; save(); };
     $('learned-clear').onclick = () => {
@@ -584,8 +597,15 @@
     const pool = RETOS.filter((r) => r.id !== state.lastReto && retoFeasible(r, topic.index, topic.letter));
     return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
   }
+  // Las rondas largas se aceleran: cada 2 vueltas completas se pierde 1 s (no baja de 3 s).
+  function speedSteps() {
+    if (!state.settings.speedup || !state.topic) return 0;
+    const n = alive().length || 1;
+    return Math.floor(Math.floor(state.topic.turns / n) / 2);
+  }
+
   function turnSeconds() {
-    const base = Math.max(3, state.settings.seconds - (state.stage ? state.stage.stepsUp : 0));
+    const base = Math.max(3, state.settings.seconds - (state.stage ? state.stage.stepsUp : 0) - speedSteps());
     return Math.max(2, base + ((state.reto && state.reto.seconds) || 0));
   }
 
@@ -744,6 +764,11 @@
       const lap = Math.min(laps, Math.floor(t.turns / alive().length) + 1);
       lapEl.textContent = `🔁 ${lap}/${laps}`;
     }
+    const cnt = $('turn-count'), rec = recordOf(t.category.id), said = t.used.size;
+    cnt.hidden = said === 0 && !rec;
+    cnt.textContent = `🔢 ${said}` + (rec ? ` · récord ${rec}` : '');
+    cnt.classList.toggle('hot', rec > 0 && said >= rec);
+    const fast = $('turn-fast'); fast.hidden = speedSteps() === 0;
     setHeard(state.micOk ? '🎙️ …' : '', '');
     renderUsed();
     renderTurnStats(player);
@@ -994,6 +1019,8 @@
     if (eliminate && !team) player.alive = false;
     if (eliminate && team) team.lives -= 1;      // en equipos se pierde una vida, no el jugador
     state.lastFail = { heard, code: (info && info.code) || '', idx: state.current, claimed: false };
+    const wordsSaid = state.topic ? state.topic.used.size : 0;
+    const brokeRecord = state.topic ? saveRecord(state.topic.category.id, wordsSaid) : false;
 
     $('end-emoji').textContent = '😢';
     $('end-title').textContent = team
@@ -1023,6 +1050,8 @@
     } else {
       line = `La ronda finalizó. ${player.name} falló. ¡Gira la ruleta del castigo!`;
     }
+    if (brokeRecord) line += ` ¡Nuevo récord en ${state.topic.category.name}: ${wordsSaid} palabras!`;
+    else if (wordsSaid >= 5) line += ` Dijeron ${wordsSaid} palabras.`;
     if (eliminate) setNext(last ? 'Ver ganador 🏆' : 'Siguiente tema ▶', last ? showResults : goNext);
     else setNext('🎰 Girar castigo', () => spinPunishment(player, team));
 
@@ -1098,7 +1127,7 @@
       const row = document.createElement('div');
       row.className = 'voter';
       const av = document.createElement('span'); av.className = 'avatar'; setAvatar(av, p);
-      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = p.name;
+      const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = p.name + (p.alive ? '' : ' 👻 juez');
       const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'yes'; yes.textContent = '👍';
       yes.setAttribute('aria-label', p.name + ': sí vale');
       const no = document.createElement('button'); no.type = 'button'; no.className = 'no'; no.textContent = '👎';
@@ -1193,6 +1222,7 @@
     $('end-avatar').style.setProperty('--hue', 140);
     $('end-player').textContent = 'Nadie falló';
     $('end-heard').hidden = true;
+    saveRecord(state.topic.category.id, state.topic.used.size);
     $('end-reason').textContent = `${laps} ${laps === 1 ? 'vuelta' : 'vueltas'} en ${state.topic.category.name}`;
     $('end-punishment').hidden = true;
     renderScores($('end-scores'));

@@ -23,6 +23,9 @@ Es una PWA sin dependencias: HTML + JS puro.
 - **Narrador**: anuncia el tema, "La ronda finalizó. El eliminado es X. La ronda continúa." y al final "El ganador es X". La ronda siguiente arranca sola (toca la cuenta regresiva para detenerla).
 - **Reclamos**: si la app rechaza una respuesta que sí valía (p. ej. "Alex" con la A), el botón "Reclamar" abre una votación entre los demás jugadores; si la mayoría acepta, el jugador vuelve al juego y la palabra se aprende en este dispositivo.
 - **Pausa**: botón ⏸ durante el turno.
+- **Contador y récord**: cada tema muestra cuántas palabras van y tu récord en ese tema (se guarda en el dispositivo); el narrador lo anuncia si se rompe.
+- **Ritmo creciente**: cada 2 vueltas completas se pierde 1 s (mínimo 3 s). Se apaga en Ajustes.
+- **Jueces**: los eliminados (👻) siguen votando en los reclamos.
 
 ## Modo equipos
 - 👥 **Equipos** (junto a "Individual"): dos equipos, 🔴 Rojo y 🔵 Azul. Se reparten al azar y equilibrados; toca a un
