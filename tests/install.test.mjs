@@ -52,4 +52,18 @@ const enums = {};
   assert.equal(e.css['--banner-h'], '50px');
   await e.win.CCAds.onScreen('turn'); assert.equal(e.css['--banner-h'], '0px');
 }
-console.log('install OK');
+// compartir: guarda la imagen en la caché y abre la hoja de compartir; cancelar se trata como AbortError
+{
+  const e = mkEnv(); const calls = [];
+  const Filesystem = { writeFile: async (o) => { calls.push(['write', o]); return { uri: 'file:///cache/' + o.path }; } };
+  let cancel = false;
+  const Share = { share: async (o) => { calls.push(['share', o]); if (cancel) throw new Error('Share canceled'); } };
+  installNative({ ...e, capacitor: { isNativePlatform: () => true, getPlatform: () => 'android' }, SpeechRecognition: plugin, AdMob: {}, Share, Filesystem, Directory: { Cache: 'CACHE' }, enums });
+  assert.equal(await e.win.CCNative.share({ dataUrl: 'data:image/png;base64,QUJD', text: 'hola', title: 'T' }), true);
+  assert.equal(calls[0][1].data, 'QUJD'); assert.equal(calls[0][1].directory, 'CACHE');
+  assert.deepEqual(calls[1][1].files, ['file:///cache/caricachupas-resultado.png']); assert.equal(calls[1][1].text, 'hola');
+  cancel = true;
+  await assert.rejects(e.win.CCNative.share({ dataUrl: 'data:image/png;base64,QUJD' }), (err) => err.name === 'AbortError');
+  await assert.rejects(e.win.CCNative.share({ dataUrl: '' }));
+}
+console.log('install OK (con compartir)');

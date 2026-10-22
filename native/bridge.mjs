@@ -5,10 +5,12 @@ import {
   AdMob, BannerAdPluginEvents, BannerAdSize, BannerAdPosition, InterstitialAdPluginEvents,
   RewardAdPluginEvents, AdmobConsentStatus, MaxAdContentRating,
 } from '@capacitor-community/admob';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { installNative } from './install.mjs';
 
 installNative({
-  win: window, doc: document, capacitor: Capacitor, SpeechRecognition, AdMob,
+  win: window, doc: document, capacitor: Capacitor, SpeechRecognition, AdMob, Share, Filesystem, Directory,
   enums: {
     BannerAdPluginEvents, BannerAdSize, BannerAdPosition, InterstitialAdPluginEvents,
     RewardAdPluginEvents, AdmobConsentStatus, MaxAdContentRating,

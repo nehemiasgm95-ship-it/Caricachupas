@@ -394,6 +394,102 @@
     brocha rodillo espatula cutter pegamento candado cadena cuerda gancho taladro_electrico
   `);
 
+  const COMIDA_LATINA = words(`
+    arepa empanada tamal tamales pupusa ceviche ajiaco sancocho bandeja_paisa feijoada churrasco asado
+    choripan milanesa locro humita chipa sopa_paraguaya anticucho lomo_saltado aji_de_gallina causa
+    papa_a_la_huancaina rocoto_relleno salteña pastel_de_choclo cazuela completo sopaipilla mote
+    gallo_pinto casado vigoron baleada nacatamal mofongo arroz_con_gandules pernil tostones mangu
+    sancocho ropa_vieja moros_y_cristianos congri yuca_frita pabellon cachapa hallaca tequeño patacon
+    bolon encebollado fanesca llapingacho chicharron mondongo pozole taco enchilada mole chilaquiles
+    tortilla quesadilla gordita sope tlayuda birria barbacoa cochinita_pibil tostada burrito frijoles
+    arroz_con_pollo pollo_guisado carne_asada matambre provoleta empanada_salteña salchipapa tacacho
+    juane chaufa arroz_chaufa ensalada_rusa pique_macho silpancho majadito sajta
+  `);
+
+  const POSTRES = words(`
+    flan pastel tres_leches arroz_con_leche churro churros brigadeiro alfajor dulce_de_leche cajeta
+    gelatina helado nieve paleta pay tarta galleta galletas buñuelo buñuelos picarones sopaipillas
+    mazamorra natilla manjar budin pudin bizcocho cupcake dona donas concha pan_dulce oreja polvoron
+    marquesita tamal_dulce capirotada jericalla chongos ate cocada cocadas obleas merengue merengues
+    suspiro suspiro_limeño quesillo majarete tembleque coquito turron mazapan alegria palanqueta
+    crepa crepas waffle hot_cake panqueque torta tiramisu brownie cheesecake mousse profiterol
+    churro_relleno rosca rosca_de_reyes pan_de_muerto elote_dulce camote_enmielado cocoles bolillo_dulce
+    torreja torrejas leche_asada leche_frita arroz_zambito cuajada bienmesabe golfeado
+  `);
+
+  const RITMOS = words(`
+    salsa cumbia bachata merengue reggaeton reguetón tango bolero mariachi ranchera banda norteño corrido
+    corridos son son_cubano son_jarocho huapango vallenato joropo samba bossa_nova forro axe chamame
+    chacarera zamba cueca huayno marinera festejo tondero rumba mambo cha_cha_cha danzon guaracha
+    bomba plena trova nueva_trova rock pop jazz blues rap hip_hop trap electronica techno house
+    reggae ska punk metal heavy_metal funk soul disco country gospel opera clasica balada grupera
+    duranguense quebradita cumbia_villera tecnocumbia chicha guaracha_dominicana dembow kizomba zouk
+    flamenco sevillanas pasodoble jota bachata_urbana champeta mapale porro calipso soca lambada
+  `);
+
+  const FIESTA = words(`
+    pastel piñata globos globo dulces confeti serpentina musica bocina luces velas vela regalos regalo
+    invitados mesa sillas manteles platos vasos servilletas cubiertos refresco bebidas botanas papas
+    pizza hot_dog tamales gorros gorro antifaz disfraz disfraces mariachi dj karaoke baile pista
+    brindis copa copas hielo hielera cerveza vino ponche tequila payaso mago juegos premios bolsitas
+    sorpresas mantel tarjeta invitacion foto fotos camara pirotecnia cohetes bengalas cuetes
+    guirnalda guirnaldas banderines cortina centro_de_mesa flores pastelito cupcakes gelatina
+    sandwiches carnes_asadas parrilla carbon tortillas salsa guacamole nachos palomitas algodon_de_azucar
+  `);
+
+  const PLAYA = words(`
+    arena mar ola olas sol sombrilla toalla bloqueador protector_solar lentes gafas sombrero gorra
+    traje_de_baño bikini short sandalias chanclas cubeta pala castillo concha conchas caracol estrella_de_mar
+    cangrejo pez peces gaviota palmera coco hamaca silla camastro hielera refresco agua tabla surf
+    salvavidas flotador lancha barco velero kayak snorkel visor aletas buceo red pelota voleibol
+    frisbee papalote cometa muelle faro roca rocas alga algas medusa tiburon delfin tortuga
+    cocos cerveza helado raspado mango ceviche camarones coctel pescado_frito mojarra hotel cabaña
+    bronceador sombra atardecer marea brisa bahia isla duna dunas acantilado
+  `);
+
+  const CASA = words(`
+    cama sofa sillon silla mesa escritorio lampara foco espejo cuadro reloj television tele radio bocina
+    computadora telefono refrigerador estufa horno microondas lavadora secadora plancha aspiradora escoba
+    trapeador cubeta recogedor basurero cortina cortinas alfombra tapete almohada cobija sabana colchon
+    ropero closet armario cajon cajonera puerta ventana llave llaves chapa timbre escalera regadera
+    tina inodoro lavabo toalla jabon champu cepillo pasta_de_dientes papel_de_baño ventilador
+    aire_acondicionado calentador boiler tinaco jardin maceta planta plantas cochera patio azotea
+    techo pared piso libreros libro libros florero vela velas control_remoto consola enchufe contacto
+    cable extension buro tocador perchero zapatera
+  `);
+
+  const CIUDADES_LATAM = words(`
+    bogota medellin cali barranquilla cartagena lima cusco arequipa trujillo quito guayaquil cuenca
+    caracas maracaibo valencia barquisimeto santiago valparaiso concepcion antofagasta buenos_aires
+    cordoba rosario mendoza mar_del_plata montevideo punta_del_este asuncion la_paz santa_cruz cochabamba
+    sucre sao_paulo rio_de_janeiro brasilia salvador fortaleza recife manaos curitiba porto_alegre
+    ciudad_de_mexico guadalajara monterrey puebla tijuana cancun merida oaxaca acapulco leon queretaro
+    veracruz chihuahua toluca morelia san_jose panama ciudad_de_panama managua tegucigalpa san_pedro_sula
+    san_salvador ciudad_de_guatemala antigua la_habana santiago_de_cuba santo_domingo punta_cana san_juan
+    ponce colon cuernavaca hermosillo culiacan mazatlan aguascalientes zacatecas tampico durango
+  `);
+
+  const JUEGOS_NINOS = words(`
+    escondidas atrapadas encantados avioncito rayuela resorte cuerda saltar_la_cuerda canicas trompo
+    yoyo balero lotería loteria serpientes_y_escaleras domino ajedrez damas memorama turista monopoly
+    stop basta caricachupas gato tres_en_raya ahorcado papa_caliente sillas_musicales congelados
+    las_traes quemados ponchados futbol beisbol basquetbol voleibol tochito carreritas bicicleta patines
+    patineta columpio resbaladilla sube_y_baja pinata piñata rondas doña_blanca naranja_dulce
+    lobo_lobito el_lobo matarile la_vibora_de_la_mar el_avion rayuela_de_colores burro_castigado
+    gallinita_ciega policias_y_ladrones quien_es_quien adivinanzas trabalenguas mimica charadas
+    rompecabezas legos muñecas carritos pelota globos burbujas papalote cometa
+  `);
+
+  const INSECTOS = words(`
+    hormiga abeja avispa mosca mosquito zancudo cucaracha grillo chapulin saltamontes mariposa polilla
+    escarabajo mariquita catarina luciernaga libelula cigarra chicharra termita pulga piojo chinche
+    garrapata araña alacran escorpion ciempies milpiés milpies cochinilla tijerilla mantis
+    mantis_religiosa abejorro abejon jicote tabano chinche_besucona gusano lombriz oruga larva
+    caracol babosa tarantula viuda_negra mayate cocuyo gorgojo pulgon trips cucaracha_voladora
+    hormiga_roja hormiga_arriera mosca_de_la_fruta jejen chaquiste nigua efimera tijereta
+    escarabajo_rinoceronte mariposa_monarca palomilla zancudo_tigre
+  `);
+
   // list: palabras válidas. Cuantas más, menos injusto es el juez automático.
   const CATEGORIES = [
     { id: 'cuatro_patas', name: 'Animales de cuatro patas', level: 1, list: CUATRO_PATAS },
@@ -434,6 +530,15 @@
     { id: 'flores', name: 'Flores y plantas', level: 3, list: FLORES },
     { id: 'instrumentos', name: 'Instrumentos musicales', level: 3, list: INSTRUMENTOS },
     { id: 'herramientas', name: 'Herramientas', level: 3, list: HERRAMIENTAS },
+    { id: 'comida_latina', name: 'Comida típica de Latinoamérica', level: 1, list: COMIDA_LATINA },
+    { id: 'postres', name: 'Postres y pan dulce', level: 1, list: POSTRES },
+    { id: 'ritmos', name: 'Ritmos y géneros musicales', level: 1, list: RITMOS },
+    { id: 'fiesta', name: 'Cosas que hay en una fiesta', level: 1, list: FIESTA },
+    { id: 'playa', name: 'Cosas de la playa', level: 1, list: PLAYA },
+    { id: 'casa', name: 'Cosas que hay en una casa', level: 1, list: CASA },
+    { id: 'ciudades_latam', name: 'Ciudades de Latinoamérica', level: 2, list: CIUDADES_LATAM },
+    { id: 'juegos_ninos', name: 'Juegos de cuando éramos niños', level: 2, list: JUEGOS_NINOS },
+    { id: 'insectos', name: 'Insectos y bichos', level: 3, list: INSECTOS },
   ];
 
   const EMOJI = {
@@ -443,6 +548,8 @@
     paises: '🌎', verduras: '🥕', profesiones: '👷', autos: '🏎️', peliculas: '🎬', series: '📺', cantantes: '🎤',
     futbolistas: '🥅', selecciones: '🏆', estados: '🗺️', pokemon: '⚡', dragonball: '🐉', videojuegos: '🎮',
     capitales: '🏙️', aves: '🦜', flores: '🌸', instrumentos: '🎸', herramientas: '🔧',
+    comida_latina: '🫓', postres: '🍮', ritmos: '💃', fiesta: '🎉', playa: '🏖️', casa: '🏠', ciudades_latam: '🌆',
+    juegos_ninos: '🪀', insectos: '🐞',
   };
   CATEGORIES.forEach((c) => { c.emoji = EMOJI[c.id] || '❓'; });
 
@@ -451,6 +558,7 @@
   const WARMUP = new Set([
     'cuatro_patas', 'animales', 'frutas', 'colores', 'cuerpo', 'comida_mx', 'deportes', 'cocina', 'super',
     'bebidas', 'dulces', 'transporte', 'ropa', 'escuela', 'selecciones', 'equipos',
+    'comida_latina', 'postres', 'ritmos', 'fiesta', 'playa', 'casa',
   ]);
   CATEGORIES.forEach((c) => { c.warmup = WARMUP.has(c.id); });
 

@@ -18,6 +18,8 @@
   const LEARNED_KEY = 'caricachupas.learned.v1';
   const RECORDS_KEY = 'caricachupas.records.v1';
   const CLAIMS_KEY = 'caricachupas.claims.v1';
+  const MINE_KEY = 'caricachupas.mine.v1';          // temas creados por el grupo
+  const TUTORIAL_KEY = 'caricachupas.tutorial.v1';
   const AVATARS = ['🦊', '🐼', '🐸', '🦁', '🐙', '🐵', '🦄', '🐯', '🐶', '🐱', '🐰', '🐨'];
   const RING_LEN = 2 * Math.PI * 52;
   const NEXT_TURN_MS = 1100;   // deja que termine el aplauso antes de abrir el micrófono
@@ -34,7 +36,7 @@
   // ---------- estado ----------
   const state = {
     players: [],            // { name, alive, avatar, hue }
-    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, teams: false, warmMic: false, progressive: true, autoNext: true, claims: true, speedup: true, customPunishments: [] },
+    settings: { seconds: 5, mode: 'eliminar', lang: 'es-MX', voice: true, sound: true, difficulty: 'medio', laps: 0, auto: true, retos: true, teams: false, warmMic: false, progressive: true, autoNext: true, claims: true, speedup: true, onlyMine: false, customPunishments: [] },
     micOk: false,           // false = se juega sin voz (botones ✔ / ✘)
     round: 0,
     topic: null,            // { category, letter, index, used:Map(clave->palabra), turns }
@@ -48,6 +50,8 @@
     paused: false,
     endToken: 0,            // invalida narraciones pendientes al cambiar de pantalla
     nextAction: null,
+    game: null,             // resumen de la partida: { topics, words, longest, best:{ name, n }, elims }
+    mine: [],               // temas propios: [{ id, name, words:[...] }]
     learned: {},            // palabras que el grupo aceptó por reclamo: { idTema: [palabras] }
     teams: null,            // [{ name, emoji, hue, score, lives }] en modo equipos
     current: 0,
@@ -88,6 +92,23 @@
     list.push(entry);
     try { localStorage.setItem(REJECTED_KEY, JSON.stringify(list.slice(-100))); } catch (_) { /* sin almacenamiento */ }
   }
+  // ---------- mis temas: listas que escribe el grupo; se juegan sin letra ----------
+  const MINE_MIN = 8, MINE_MAX_WORDS = 300, MINE_MAX = 20;
+  function loadMine() {
+    try { const a = JSON.parse(localStorage.getItem(MINE_KEY) || '[]'); state.mine = Array.isArray(a) ? a : []; } catch (_) { state.mine = []; }
+  }
+  function saveMine() { try { localStorage.setItem(MINE_KEY, JSON.stringify(state.mine)); } catch (_) { /* sin almacenamiento */ } }
+  // "grapadora, impresora; café" -> ['grapadora', 'impresora', 'café'] (sin repetidas)
+  function parseWords(text) {
+    const seen = new Set(), out = [];
+    String(text).split(/[,;\n]+/).map((w) => w.trim().replace(/\s+/g, ' ')).filter(Boolean).forEach((w) => {
+      const k = canonical(w);
+      if (k && !seen.has(k)) { seen.add(k); out.push(w.slice(0, 40)); }
+    });
+    return out.slice(0, MINE_MAX_WORDS);
+  }
+  const mineCategories = () => state.mine.map((m) => ({ id: m.id, name: m.name, emoji: '📝', level: 1, list: m.words, mine: true, warmup: true }));
+
   const fmtWord = (r) => `${r.topic}${r.letter ? ' (' + r.letter + ')' : ''}: ${r.said}`;
   // Reclamos votados por el grupo (sirven para ampliar las listas).
   function readClaims() { try { return JSON.parse(localStorage.getItem(CLAIMS_KEY) || '[]'); } catch (_) { return []; } }
@@ -133,12 +154,48 @@
     document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'screen-' + name));
     window.scrollTo(0, 0);
     if (name !== 'round-end') cancelAutoNext();
+    if (name === 'setup') maybeTutorial();
     try {
       Promise.resolve(Ads().onScreen(name)).catch(() => {});
       if (name === 'round-end') $('btn-reward').hidden = !Ads().canReward();
       if (name === 'setup') $('btn-adprivacy').hidden = !Ads().privacyOptionsRequired;
     } catch (_) { /* un anuncio nunca debe romper el juego */ }
   }
+  // ---------- tutorial: 4 tarjetas la primera vez (y desde "¿Cómo se juega?") ----------
+  const TUTORIAL = [
+    { e: '🎤', t: 'Di tu respuesta en voz alta', d: 'Sale un tema, por ejemplo “Frutas”. En tu turno, di una antes de que se acabe el tiempo.' },
+    { e: '🧑‍⚖️', t: 'La app es el juez', d: 'Si vale: aplausos y puntos. Si se acaba el tiempo, repites o no vale… ¡quedas fuera!' },
+    { e: '✋', t: '¿No te la aceptó?', d: 'Toca “Reclamar” y los demás votan. Si gana el sí, vuelves al juego.' },
+    { e: '🏆', t: 'Gana el último en pie', d: 'Empieza fácil y sin letra. Luego llega la letra, sube la dificultad y el tiempo baja.' },
+  ];
+  let tutIdx = 0;
+  function maybeTutorial() {
+    let seen = true;
+    try { seen = !!localStorage.getItem(TUTORIAL_KEY); } catch (_) { /* sin almacenamiento: no molestar */ }
+    if (!seen) openTutorial();
+  }
+  function openTutorial() { tutIdx = 0; renderTutorial(); $('tutorial').hidden = false; }
+  function closeTutorial() {
+    $('tutorial').hidden = true;
+    try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch (_) { /* sin almacenamiento */ }
+  }
+  function renderTutorial() {
+    const c = TUTORIAL[tutIdx];
+    $('tut-emoji').textContent = c.e;
+    $('tut-title').textContent = c.t;
+    $('tut-text').textContent = c.d;
+    $('tut-dots').textContent = TUTORIAL.map((_, i) => (i === tutIdx ? '●' : '○')).join(' ');
+    const lastCard = tutIdx === TUTORIAL.length - 1;
+    $('tut-next').textContent = lastCard ? '¡A jugar! 🎉' : 'Siguiente ▶';
+    $('tut-skip').hidden = lastCard;
+    pop($('tut-emoji'));
+  }
+  function initTutorial() {
+    $('tut-next').onclick = () => { if (tutIdx >= TUTORIAL.length - 1) closeTutorial(); else { tutIdx += 1; renderTutorial(); } };
+    $('tut-skip').onclick = closeTutorial;
+    $('btn-howto').onclick = openTutorial;
+  }
+
   let toastTimer;
   function toast(msg) {
     const t = $('toast');
@@ -344,6 +401,39 @@
       ul.appendChild(li);
     });
   }
+  function renderMine() {
+    const ul = $('mine-list');
+    ul.innerHTML = '';
+    state.mine.forEach((m, i) => {
+      const li = document.createElement('li');
+      const span = document.createElement('button');
+      span.type = 'button'; span.className = 'mine-name';
+      span.textContent = `📝 ${m.name} · ${m.words.length}`;
+      span.setAttribute('aria-label', 'Editar ' + m.name);
+      span.onclick = () => { $('mine-name').value = m.name; $('mine-words').value = m.words.join(', '); $('mine-name').focus(); };
+      const rm = document.createElement('button');
+      rm.type = 'button'; rm.textContent = '✕'; rm.setAttribute('aria-label', 'Borrar tema ' + m.name);
+      rm.onclick = () => { indexCache.delete(m.id); state.mine.splice(i, 1); saveMine(); renderMine(); };
+      li.append(span, rm);
+      ul.appendChild(li);
+    });
+    $('onlymine-line').hidden = state.mine.length === 0;
+  }
+  function submitMine(e) {
+    e.preventDefault();
+    const name = $('mine-name').value.trim().replace(/\s+/g, ' ').slice(0, 40);
+    const list = parseWords($('mine-words').value);
+    if (!name) { toast('Ponle nombre al tema'); return; }
+    if (list.length < MINE_MIN) { toast(`Escribe al menos ${MINE_MIN} palabras (llevas ${list.length})`); return; }
+    const prev = state.mine.find((m) => m.name.toLowerCase() === name.toLowerCase());
+    if (!prev && state.mine.length >= MINE_MAX) { toast(`Máximo ${MINE_MAX} temas`); return; }
+    if (prev) { prev.name = name; prev.words = list; indexCache.delete(prev.id); }
+    else state.mine.push({ id: 'mio_' + Date.now().toString(36), name, words: list });
+    saveMine(); renderMine();
+    $('mine-name').value = ''; $('mine-words').value = '';
+    toast(prev ? `✏️ “${name}” actualizado` : `📝 “${name}” guardado con ${list.length} palabras`);
+  }
+
   function allPunishments() {
     return PUNISHMENTS.concat(state.settings.customPunishments.map((text) => ({ emoji: '😈', text })));
   }
@@ -415,6 +505,10 @@
       $('pun-text').value = '';
       save(); renderPunishments();
     };
+    $('mine-form').onsubmit = submitMine;
+    $('onlymine').checked = state.settings.onlyMine;
+    $('onlymine').onchange = (e) => { state.settings.onlyMine = e.target.checked; save(); };
+    renderMine();
     $('btn-play').onclick = startFlow;
     $('rejected-clear').onclick = () => {
       try { localStorage.removeItem(REJECTED_KEY); } catch (_) {}
@@ -514,6 +608,7 @@
     state.players.forEach(resetStats);
     state.reto = null; state.lastReto = null; state.dir = 1;
     state.round = 0;
+    state.game = { topics: 0, words: 0, longest: '', best: null, elims: 0 };
     if (state.settings.teams) {
       // Equipos: turnos alternados rojo-azul-rojo-azul...
       if (!state.players.some((p) => p.team === 0) || !state.players.some((p) => p.team === 1)) assignTeams(true);
@@ -570,17 +665,20 @@
   function pickTopic(stage) {
     const diff = DIFFICULTIES[stage.diffKey] || DIFFICULTIES.medio;
     let pool = stage.free ? CATEGORIES.filter((c) => c.warmup) : CATEGORIES.filter((c) => diff.levels.includes(c.level));
+    // Mis temas: solo esos, o de vez en cuando mezclados con los de la app.
+    const mine = mineCategories();
+    if (mine.length && (state.settings.onlyMine || Math.random() < 0.35)) pool = mine;
     const fresh = pool.filter((c) => !state.recentCats.includes(c.id));
     if (fresh.length) pool = fresh;
     const category = pool[Math.floor(Math.random() * pool.length)];
     state.recentCats = [category.id].concat(state.recentCats).slice(0, 4);
 
-    let letter = null;     // tema libre: sin letra
-    if (!stage.free) {
+    let letter = null;     // tema libre (o tema propio): sin letra
+    if (!stage.free && !category.mine) {
       const letters = lettersForRange(rankedLetters(category.list, LETTERS), diff.letters);
       letter = letters[Math.floor(Math.random() * letters.length)];
     }
-    return { category, letter, free: !!stage.free, index: indexFor(category), used: new Map(), turns: 0 };
+    return { category, letter, free: !!stage.free || !!category.mine, index: indexFor(category), used: new Map(), turns: 0 };
   }
 
   // "Frutas con la letra M" o, en tema libre, solo "Animales de cuatro patas".
@@ -619,7 +717,8 @@
     state.current = starterIdx == null ? randomStarter() : starterIdx;
     const t = state.topic;
     const diff = DIFFICULTIES[state.stage.diffKey] || DIFFICULTIES.medio;
-    $('topic-round').textContent = t.free ? `Tema ${state.round} · Calentamiento 🔥`
+    $('topic-round').textContent = t.category.mine ? `Tema ${state.round} · Tema de ustedes 📝`
+      : t.free ? `Tema ${state.round} · Calentamiento 🔥`
       : `Tema ${state.round} · ${diff.label}${state.stage.stepsUp ? ' ⬆️' : ''}`;
     $('topic-emoji').textContent = t.category.emoji;
     $('topic-name').textContent = t.category.name;
@@ -881,6 +980,7 @@
     stopTimer(); stopListening();
     state.topic.used.set(key || ('manual-' + state.topic.used.size), answer || 'respuesta');
     state.topic.turns += 1;
+    noteWord(answer);
 
     // Puntos: base + rapidez + racha, por el multiplicador del reto.
     const pl = state.players[state.current];
@@ -962,7 +1062,9 @@
   }
   function renderScores(ol, { skipOut = false } = {}) {
     ol.innerHTML = '';
-    const rows = state.players.map((p, i) => ({ p, i })).sort((a, b) => b.p.score - a.p.score);
+    // Con eliminación, los que siguen en pie van arriba (el ganador por supervivencia queda primero).
+    const elim = state.settings.mode === 'eliminar' && !state.teams;
+    const rows = state.players.map((p, i) => ({ p, i })).sort((a, b) => (elim ? b.p.alive - a.p.alive : 0) || b.p.score - a.p.score);
     rows.forEach(({ p }, rank) => {
       const li = document.createElement('li');
       if (!p.alive) li.className = 'out';
@@ -1011,6 +1113,41 @@
   }
 
   // ---------- fin de ronda ----------
+  // ---------- frases del narrador: varían para que no suene siempre igual ----------
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const PHRASES = {
+    open: {
+      timeout: ['¡Se acabó el tiempo!', '¡Tiempo!', 'El reloj no perdona.', 'Se quedó en blanco.'],
+      repeat: ['¡Esa ya la dijeron!', 'Palabra repetida.', '¡Repetida, no se vale!'],
+      letter: ['¡Esa no empieza con la letra!', 'Letra equivocada.'],
+      other: ['La ronda finalizó.', '¡Uy, esa no vale!', '¡Fallaste!', 'Mmm… esa no estaba.'],
+    },
+    out: [(n) => `El eliminado es ${n}.`, (n) => `${n} queda fuera.`, (n) => `Se despide ${n}.`, (n) => `Adiós, ${n}.`, (n) => `${n} sale del juego.`],
+    go: [(k) => 'La ronda continúa.', (k) => '¡Seguimos!', (k) => `Quedan ${k}. ¡Atentos!`, (k) => 'Que siga la ronda.', (k) => `Quedan ${k} en pie.`],
+    win: [(n) => `La partida terminó. El ganador es ${n}. ¡Aplausos!`, (n) => `La partida terminó. El ganador es ${n}. ¡Nadie pudo con su vocabulario!`,
+      (n) => `La partida terminó. El ganador es ${n}. ¿Quién se atreve a la revancha?`, (n) => `La partida terminó. El ganador es ${n}.`],
+  };
+  // Primera eliminación de la partida: la frase clásica. Las siguientes, variadas y según cómo falló.
+  function elimLine(name, code, last, left) {
+    state.game = state.game || { topics: 0, words: 0, longest: '', best: null, elims: 0 };
+    const first = state.game.elims++ === 0;
+    if (first) return `La ronda finalizó. El eliminado es ${name}.` + (last ? '' : ' La ronda continúa.');
+    const open = pick(PHRASES.open[code] || PHRASES.open.other);
+    return `${open} ${pick(PHRASES.out)(name)}` + (last ? '' : ' ' + pick(PHRASES.go)(left));
+  }
+  function noteWord(w) {
+    const g = state.game;
+    if (!g) return;
+    g.words += 1;
+    if (w && w.length > g.longest.length) g.longest = w;
+  }
+  function noteTopicEnd() {
+    const g = state.game, t = state.topic;
+    if (!g || !t) return;
+    g.topics += 1;
+    if (!g.best || t.used.size > g.best.n) g.best = { name: t.category.name, n: t.used.size };
+  }
+
   function endRound(reason, heard, info) {
     closeMic();
     const player = state.players[state.current];
@@ -1021,6 +1158,7 @@
     state.lastFail = { heard, code: (info && info.code) || '', idx: state.current, claimed: false };
     const wordsSaid = state.topic ? state.topic.used.size : 0;
     const brokeRecord = state.topic ? saveRecord(state.topic.category.id, wordsSaid) : false;
+    noteTopicEnd();
 
     $('end-emoji').textContent = '😢';
     $('end-title').textContent = team
@@ -1046,9 +1184,11 @@
       line = `La ronda finalizó. Falló el equipo ${team.name}. ` + (!eliminate ? '' : team.lives <= 0 ? 'Se quedó sin vidas.'
         : `Pierde una vida, le ${team.lives === 1 ? 'queda' : 'quedan'} ${team.lives}.`);
     } else if (eliminate) {
-      line = `La ronda finalizó. El eliminado es ${player.name}.` + (last ? '' : ' La ronda continúa.');
+      line = elimLine(player.name, state.lastFail.code, last, alive().length);
     } else {
-      line = `La ronda finalizó. ${player.name} falló. ¡Gira la ruleta del castigo!`;
+      line = pick([`La ronda finalizó. ${player.name} falló. ¡Gira la ruleta del castigo!`,
+        `${pick(PHRASES.open[state.lastFail.code] || PHRASES.open.other)} ${player.name}, ¡a la ruleta del castigo!`,
+        `${player.name} falló. ¡Que la ruleta decida su castigo!`]);
     }
     if (brokeRecord) line += ` ¡Nuevo récord en ${state.topic.category.name}: ${wordsSaid} palabras!`;
     else if (wordsSaid >= 5) line += ` Dijeron ${wordsSaid} palabras.`;
@@ -1223,6 +1363,7 @@
     $('end-player').textContent = 'Nadie falló';
     $('end-heard').hidden = true;
     saveRecord(state.topic.category.id, state.topic.used.size);
+    noteTopicEnd();
     $('end-reason').textContent = `${laps} ${laps === 1 ? 'vuelta' : 'vueltas'} en ${state.topic.category.name}`;
     $('end-punishment').hidden = true;
     renderScores($('end-scores'));
@@ -1301,10 +1442,111 @@
         : ta.score !== tb.score ? (ta.score > tb.score ? ta : tb) : null;
       line = win ? `La partida terminó. Ganó el equipo ${win.name}.` : 'La partida terminó en empate.';
     } else {
-      line = champ ? `La partida terminó. El ganador es ${champ.name}.` : 'La partida terminó.';
+      line = champ ? pick(PHRASES.win)(champ.name) : 'La partida terminó.';
     }
     const token = ++state.endToken;
     setTimeout(() => { if (token === state.endToken) narrate(line); }, 700);
+  }
+
+  // ---------- resumen para compartir: una imagen con el ganador, marcador y datos curiosos ----------
+  const shareUrl = () => CFG.playUrl || CFG.webUrl || '';
+  function summaryData() {
+    const eliminate = state.settings.mode === 'eliminar';
+    const left = alive();
+    // Con eliminación, quien sigue en pie va primero aunque tenga menos puntos.
+    const ranked = state.players.slice().sort((a, b) => (eliminate ? (b.alive - a.alive) : 0) || b.score - a.score);
+    let title = '🏆 Ganó', who = null, avatar = '🏆', hue = 45;
+    if (state.teams) {
+      const [ta, tb] = state.teams;
+      const win = (eliminate && (ta.lives <= 0 || tb.lives <= 0)) ? (ta.lives <= 0 ? tb : ta)
+        : ta.score !== tb.score ? (ta.score > tb.score ? ta : tb) : null;
+      if (win) { who = 'Equipo ' + win.name; avatar = win.emoji; hue = win.hue; } else { title = '🤝 Empate'; who = 'Empate'; avatar = '🤝'; }
+    } else {
+      const champ = eliminate && left.length === 1 ? left[0].p : ranked[0];
+      if (champ) { who = champ.name; avatar = champ.avatar; hue = champ.hue; }
+      if (!(eliminate && left.length === 1)) title = '🏁 Va ganando';
+    }
+    const g = state.game || { topics: 0, words: 0, longest: '', best: null };
+    return { title, who: who || '¡Nadie!', avatar, hue, ranked, g, awards: computeAwards().slice(0, 3) };
+  }
+  function summaryText() {
+    const d = summaryData();
+    const bits = [`${d.title === '🤝 Empate' ? '🤝 Empate' : '🏆 ' + d.who} en Caricachupas`];
+    if (d.g.words) bits.push(`${d.g.words} palabras en ${d.g.topics} ${d.g.topics === 1 ? 'tema' : 'temas'}`);
+    if (d.g.best && d.g.best.n) bits.push(`récord: ${d.g.best.n} en ${d.g.best.name}`);
+    const url = shareUrl();
+    return bits.join(' · ') + '. ¿Quién nos gana? 🎤' + (url ? ' ' + url : '');
+  }
+  function drawSummary() {
+    const d = summaryData();
+    const W = 1080, H = 1350;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Color Emoji", sans-serif';
+    const font = (px, w = 700) => { x.font = `${w} ${px}px ${FONT}`; };
+    const fit = (text, max) => { let t = String(text); while (t.length > 1 && x.measureText(t).width > max) t = t.slice(0, -2) + '…'; return t; };
+    const bg = x.createRadialGradient(W / 2, 0, 80, W / 2, 200, H);
+    bg.addColorStop(0, '#4a2a8a'); bg.addColorStop(0.55, '#1b1033'); bg.addColorStop(1, '#120a24');
+    x.fillStyle = bg; x.fillRect(0, 0, W, H);
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    font(64, 800); x.fillStyle = '#ffd23f'; x.fillText('🎤 Caricachupas', W / 2, 90);
+    font(54, 700); x.fillStyle = '#f6f1ff'; x.fillText(d.title, W / 2, 200);
+    x.beginPath(); x.arc(W / 2, 360, 110, 0, Math.PI * 2);
+    x.fillStyle = `hsl(${d.hue} 70% 45%)`; x.fill();
+    x.lineWidth = 10; x.strokeStyle = '#ffd23f'; x.stroke();
+    font(120, 400); x.fillText(d.avatar, W / 2, 368);
+    font(80, 800); x.fillStyle = '#ffffff'; x.fillText(fit(d.who, W - 120), W / 2, 540);
+    // marcador
+    let y = 650;
+    x.textAlign = 'left';
+    d.ranked.slice(0, 6).forEach((p, i) => {
+      x.fillStyle = i === 0 ? 'rgba(255,210,63,.18)' : 'rgba(255,255,255,.07)';
+      x.beginPath(); x.roundRect ? x.roundRect(120, y - 34, W - 240, 68, 18) : x.rect(120, y - 34, W - 240, 68); x.fill();
+      font(40, 700); x.fillStyle = i === 0 ? '#ffd23f' : '#b9a9dd'; x.fillText(`${i + 1}.`, 145, y + 2);
+      font(42, 400); x.fillText(p.avatar, 205, y + 2);
+      font(40, 700); x.fillStyle = '#f6f1ff'; x.fillText(fit(p.name, 520), 270, y + 2);
+      x.textAlign = 'right'; x.fillStyle = '#ffd23f'; x.fillText(`${p.score} pts`, W - 145, y + 2); x.textAlign = 'left';
+      y += 80;
+    });
+    // datos curiosos
+    const facts = [];
+    if (d.g.words) facts.push(`🔢 ${d.g.words} palabras en ${d.g.topics} ${d.g.topics === 1 ? 'tema' : 'temas'}`);
+    if (d.g.best && d.g.best.n) facts.push(`📈 Récord: ${d.g.best.n} seguidas en ${d.g.best.name}`);
+    if (d.g.longest) facts.push(`📏 La más larga: “${d.g.longest.charAt(0).toUpperCase() + d.g.longest.slice(1)}”`);
+    d.awards.forEach((a) => facts.push(`${a.emoji} ${a.title}: ${a.who.name} (${a.detail})`));
+    x.textAlign = 'center';
+    y += 50;
+    font(36, 600); x.fillStyle = '#e9e1ff';
+    facts.slice(0, 5).forEach((f) => { if (y < H - 120) { x.fillText(fit(f, W - 140), W / 2, y); y += 52; } });
+    font(34, 700); x.fillStyle = '#ffd23f'; x.fillText('¿Quién nos gana? Juega Caricachupas 🎤', W / 2, H - 60);
+    return c;
+  }
+  async function shareSummary() {
+    const btn = $('btn-share');
+    btn.disabled = true;
+    try {
+      const canvas = drawSummary();
+      const text = summaryText();
+      const title = 'Caricachupas';
+      if (NATIVE && window.CCNative.share) {
+        await window.CCNative.share({ dataUrl: canvas.toDataURL('image/png'), text, title });
+        return;
+      }
+      const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+      const file = blob && typeof File === 'function' ? new File([blob], 'caricachupas.png', { type: 'image/png' }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text, title });
+        return;
+      }
+      if (navigator.share) { await navigator.share({ text, title }); return; }
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png'); a.download = 'caricachupas.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      toast('🖼️ Imagen descargada: compártela con tu grupo');
+    } catch (e) {
+      if (!e || e.name !== 'AbortError') toast('No se pudo compartir');
+    } finally { btn.disabled = false; }
   }
 
   function quit() {
@@ -1540,6 +1782,7 @@
   // ---------- arranque ----------
   function init() {
     loadLearned();
+    loadMine();
     initSetup();
     $('btn-ok').onclick = () => acceptAnswer('', '');
     $('btn-bad').onclick = () => failTurn('El grupo dijo que falló', '', { code: 'manual' });
@@ -1575,13 +1818,15 @@
     $('btn-joker-pass').onclick = usePassJoker;
     $('btn-quit-winner').onclick = quit;
     $('btn-again').onclick = startFlow;
+    $('btn-share').onclick = shareSummary;
     if (!NATIVE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
     initInstall();
     initFeedback();
+    initTutorial();
     initWelcome();
   }
   init();
-  window.__cc = { state, RETOS, indexFor };   // gancho para pruebas automáticas
+  window.__cc = { state, RETOS, indexFor, drawSummary, summaryText };   // gancho para pruebas automáticas
 })();

@@ -26,6 +26,10 @@ Es una PWA sin dependencias: HTML + JS puro.
 - **Contador y récord**: cada tema muestra cuántas palabras van y tu récord en ese tema (se guarda en el dispositivo); el narrador lo anuncia si se rompe.
 - **Ritmo creciente**: cada 2 vueltas completas se pierde 1 s (mínimo 3 s). Se apaga en Ajustes.
 - **Jueces**: los eliminados (👻) siguen votando en los reclamos.
+- **Mis temas**: en Ajustes el grupo escribe sus propios temas (nombre + palabras separadas por coma, mínimo 8). Se juegan sin letra, mezclados con los de la app o "solo mis temas". Se guardan en el dispositivo.
+- **Narrador variado**: la primera eliminación usa la frase clásica; después cambia según cómo falló (tiempo, repetida, no vale).
+- **Compartir resultado**: al final se genera una imagen (ganador, marcador, palabras, récord, premios) para mandarla por WhatsApp. En Android usa la hoja de compartir del sistema (@capacitor/share + @capacitor/filesystem, sin permisos extra); en la web, Web Share o descarga.
+- **Tutorial**: 4 tarjetas la primera vez; luego desde "❓ Cómo se juega".
 
 ## Modo equipos
 - 👥 **Equipos** (junto a "Individual"): dos equipos, 🔴 Rojo y 🔵 Azul. Se reparten al azar y equilibrados; toca a un
@@ -92,10 +96,10 @@ ampliar las listas de `data.js`.
   sin perdedor. "Hasta que alguien falle" es el modo clásico.
 - **Al fallar**: eliminar o castigo.
 
-## Temas (38)
+## Temas (47)
 Animales, frutas, países, nombres, comida mexicana, deportes, y populares como Los Simpson, Disney y Pixar,
 superhéroes, Pokémon, Dragon Ball, videojuegos, películas, series y caricaturas, cantantes, futbolistas,
-equipos y selecciones, dulces y botanas, bebidas, entre otros. Se agregan en `data.js` con su `level` (1 a 3).
+equipos y selecciones, dulces y botanas, bebidas, comida latina, postres, ritmos, fiesta, playa, casa, ciudades de Latinoamérica, juegos de niños, insectos, entre otros. Se agregan en `data.js` con su `level` (1 a 3).
 
 Solo se usan nombres en texto, sin logotipos, imágenes ni letras de canciones. Esos nombres pertenecen a sus
 dueños y el juego no está afiliado a ellos.

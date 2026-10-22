@@ -1,6 +1,6 @@
 // Ajustes que se cambian sin tocar la lógica del juego.
 window.CC_CONFIG = {
-  version: '1.4.0',
+  version: '1.5.0',
   // Retroalimentación: se envía a un Google Form (gratis, sin servidor). Ver README → "Retroalimentación".
   // Mientras formUrl esté vacío, la app ofrece compartir el mensaje (WhatsApp, correo...) o copiarlo.
   feedback: {
@@ -18,5 +18,6 @@ window.CC_CONFIG = {
     testDevices: [],
   },
   playUrl: '',       // enlace de la ficha en Google Play, cuando exista (activa "Calificar en Play")
+  webUrl: 'https://nehemiasgm95-ship-it.github.io/Caricachupas/',   // se comparte en el resumen mientras no haya playUrl
   privacyUrl: 'privacidad.html',
 };
